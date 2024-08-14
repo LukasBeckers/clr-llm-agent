@@ -1,0 +1,3 @@
+
+from data_sources.web_of_science import WebOfScienceScraper as WebOfScience
+from data_sources.data_source_interface import IDataSource
