@@ -4,3 +4,4 @@
 **/.ipynb_checkpoints/**
 set_key.py
 key.env
+.env
