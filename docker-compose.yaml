@@ -1,4 +1,0 @@
-services:
-    data_source_provider:
-        build:
-            context: .
