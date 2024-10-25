@@ -1,15 +1,22 @@
-from agents.BaseClassifier import BaseClassifier
+from step1.ResearchQuestionClassifer import ResearchQuestionClassifier
+from step2.SearchQueryGenerator import SearchQueryGenerator
 
 from agents.LLMs import gpt_4o_mini
 
 
 if __name__=="__main__":
-    sentiment_classifier = BaseClassifier(
-        valid_classes=["Neutral", "Positive", "Negative"],
-        llm = gpt_4o_mini
+
+    # Step 1
+    research_question_classifier = ResearchQuestionClassifier(gpt_4o_mini)
+
+    rq =  "How has the Research concerning the glymphatic System Changed over time?"
+    rq_class = research_question_classifier(rq)
+
+    # Step 2
+    pubmed_search_string_generator = SearchQueryGenerator(gpt_4o_mini)
+
+    search_strings = pubmed_search_string_generator(
+        research_question=rq,
+        classification_result=rq_class
     )
-
-    text = "Ich finde diese Arbeit ok!"
-
-    result = sentiment_classifier(text)
-    print(result, type(result))
+    print(search_strings)

@@ -4,15 +4,20 @@ from langchain_community.chat_models import ChatOpenAI  # Updated import
 from langchain.chains import LLMChain  # Continue using LLMChain
 from typing import List
 
+
 class BaseClassifier:
     def __init__(self, 
                  valid_classes: List[str],
+                 prompt_explanation: str,
                  llm: ChatOpenAI
             ):
         self.prompt_template = PromptTemplate(
-            input_variables=["text", "valid_classes"],
+            input_variables=["text", "valid_classes", "prompt_explanation"],
             template="""
             You are a text classifier. Classify the following text into one of the categories: {valid_classes}.
+
+            Further Explaination of your task: 
+            {prompt_explanation}
 
             Text: "{text}"
 
@@ -20,6 +25,7 @@ class BaseClassifier:
             """
         )
         self.valid_classes = valid_classes
+        self.prompt_explanation = prompt_explanation
         self.llm = llm
 
         self.classification_chain = LLMChain(
@@ -47,7 +53,8 @@ class BaseClassifier:
     def __call__(self, text: str) -> str: 
         classification = self.classification_chain.run(
             text=text,
-            valid_classes=self.valid_classes
+            valid_classes=self.valid_classes, 
+            prompt_explanation=self.prompt_explanation
         )
 
         validity = self._validate_result(classification)
@@ -56,3 +63,6 @@ class BaseClassifier:
             return classification
         else:
             return self._correct_result(classification)
+
+
+

@@ -16,4 +16,7 @@ def create_llm(llm_name: str, temperature: float = 0.2) -> ChatOpenAI:
 
 
 # Replace "gpt-4o-mini" with your actual model name, e.g., "gpt-4"
-gpt_4o_mini = create_llm("gpt-4")
+gpt_4o_mini = create_llm("gpt-4o-mini")
+gpt_4 = create_llm("gpt-4")
+gpt_4o = create_llm("gpt-4o")
+o1_mini = create_llm("o1-mini")
