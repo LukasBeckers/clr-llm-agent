@@ -1,21 +1,25 @@
-# step1/ResearchQuestionClassifier.py
-
-from agents.BaseClassifier import BaseClassifier
 from langchain_community.chat_models import ChatOpenAI
-from typing import List
+from agents.ReasoningBaseClassifier import ReasoningBaseClassifier
+from typing import Tuple
 
 
-class ResearchQuestionClassifier(BaseClassifier):
-    def __init__(self, llm: ChatOpenAI):
+class ReasoningResearchQuestionClassifier(ReasoningBaseClassifier):
+    def __init__(self,
+                 llm: ChatOpenAI,
+                 start_answer_token: str = "<START_ANSWER>",
+                 stop_answer_token: str = "<STOP_ANSWER>"):
         """
-        Initializes the ResearchQuestionClassifier with specific valid classes and a prompt explanation.
+        Initializes the ReasoningResearchQuestionClassifier with specific valid classes,
+        a prompt explanation, and tokens to encapsulate the final classification result.
 
         Args:
             llm (ChatOpenAI): An instance of the ChatOpenAI language model.
+            start_answer_token (str): Token indicating the start of the final answer.
+            stop_answer_token (str): Token indicating the end of the final answer.
         """
         # Define the valid classes for classification
         valid_classes = ['Explicating', 'Envisioning', 'Relating', 'Debating']
-        
+
         # Provide a detailed explanation to guide the LLM in classification
         prompt_explanation = """
         **Classification Definitions:**
@@ -41,28 +45,26 @@ class ResearchQuestionClassifier(BaseClassifier):
         - Determine which of the four categories (**Explicating**, **Envisioning**, **Relating**, **Debating**) best fits the nature and intent of the question.
         - Ensure that the classification aligns with the definitions provided above.
         """
-        
-        # Initialize the BaseClassifier with the defined classes and explanation
+
+        # Initialize the ReasoningBaseClassifier with the defined classes, explanation, and tokens
         super().__init__(
             valid_classes=valid_classes,
             prompt_explanation=prompt_explanation,
-            llm=llm
+            llm=llm,
+            start_answer_token=start_answer_token,
+            stop_answer_token=stop_answer_token
         )
-    
-    
-    def __call__(self, text: str) -> str:
+
+    def __call__(self, text: str) -> Tuple[str, str]:
         """
-        Classifies a given research question into one of the predefined classes.
+        Classifies a given research question into one of the predefined classes and provides reasoning.
 
         Args:
             text (str): The research question to classify.
 
         Returns:
-            str: The classification result.
+            Tuple[str, str]: A tuple containing the classification result and the reasoning steps.
         """
         # Run the classification chain with the provided text
-        classification = self.classify(text=text)
-
-        return classification
-        
-
+        classification, reasoning = self.classify(text=text)
+        return classification, reasoning

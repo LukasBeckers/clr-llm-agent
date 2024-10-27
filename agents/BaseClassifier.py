@@ -50,7 +50,7 @@ class BaseClassifier:
         """
         return result
 
-    def __call__(self, text: str) -> str: 
+    def classify(self, text: str) -> str: 
         classification = self.classification_chain.run(
             text=text,
             valid_classes=self.valid_classes, 

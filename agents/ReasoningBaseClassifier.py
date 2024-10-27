@@ -1,8 +1,6 @@
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 from langchain_community.chat_models import ChatOpenAI
-
-
 import re
 from typing import List, Tuple
 
@@ -80,7 +78,7 @@ Response:
             # If tokens not found, treat entire output as reasoning with no final answer
             return "", output.strip()
 
-    def __call__(self, text: str) -> Tuple[str, str]:
+    def classify(self, text: str) -> Tuple[str, str]:
         """
         Classifies the given text and returns the final answer along with reasoning steps.
 
