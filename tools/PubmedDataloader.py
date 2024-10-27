@@ -3,7 +3,7 @@ import time
 import os
 
 
-class PubmedDataloader():
+class PubmedDataLoader():
     def __init__(self, api_url):
         """
         Initializes the APIClient with the base URL of the backend API.
@@ -103,7 +103,7 @@ class PubmedDataloader():
 
         return json_data
 
-    def search_and_download(self, search_string, email, max_results=None,
+    def __call__(self, search_string, email, max_results=None,
                             poll_interval=5, timeout=3600):
         """
         Performs the entire workflow: starts the search, monitors progress, and downloads the results.

@@ -1,8 +1,8 @@
-from tools.PubmedDataloader import PubmedDataloader
+from tools.PubmedDataLoader import PubmedDataLoader
 
 
 # Dictionary that matches all data_sources to a key
 # To be used in the DataLoader class
 data_sources = {
-    "pub_med": PubmedDataloader("http://localhost:5000")
+    "pub_med": PubmedDataLoader("http://localhost:5112")
 }

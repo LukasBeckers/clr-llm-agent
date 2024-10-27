@@ -1,6 +1,6 @@
 # step2/SearchQueryGenerator.py
 
-from step2.serach_query_system_prompts import pubmed_query_generation_system_prompt
+from step2.prompts import pubmed_query_generation_system_prompt
 from agents.TextGenerator import TextGenerator
 from langchain_community.chat_models import ChatOpenAI
 from typing import Optional, List
