@@ -23,10 +23,7 @@ class DataLoader:
 
         # This has to be changed for other datasources to remove duplicates
         for result in results:
-            print("Result", len(result))
             for key, value in result.items():
-                print("Key", key, type(key))
-                print("Value", len(value), type(value))
                 for publication in value: 
                     if not publication in combined_results:
                         combined_results.append(publication)

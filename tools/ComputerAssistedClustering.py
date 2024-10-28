@@ -3,6 +3,7 @@ from sklearn.cluster import KMeans, AgglomerativeClustering, DBSCAN
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 
+
 class ComputerAssistedClustering:
     def __init__(self, algorithm='kmeans', num_clusters=10, random_state=42, **kwargs):
         """

@@ -1,12 +1,19 @@
-from gensim.models import HdpModel
+import gensim
+from gensim import corpora
+from gensim.models import LdaModel
 
-class HierarchicalDirichletProcess:
-    def __init__(self, random_state=42):
+
+class LatentDirichletAllocation:
+    def __init__(self, num_topics=10, passes=10, random_state=42):
         """
-        Initializes the HDP model.
+        Initializes the LDA model.
 
+        :param num_topics: Number of topics to extract
+        :param passes: Number of passes through the corpus during training
         :param random_state: Seed for reproducibility
         """
+        self.num_topics = num_topics
+        self.passes = passes
         self.random_state = random_state
         self.dictionary = None
         self.corpus = None
@@ -14,24 +21,25 @@ class HierarchicalDirichletProcess:
 
     def fit(self, documents):
         """
-        Fits the HDP model to the documents.
+        Fits the LDA model to the documents.
 
         :param documents: List of preprocessed documents (list of tokens)
         """
         self.dictionary = corpora.Dictionary(documents)
         self.corpus = [self.dictionary.doc2bow(doc) for doc in documents]
-        self.model = HdpModel(corpus=self.corpus,
+        self.model = LdaModel(corpus=self.corpus,
                               id2word=self.dictionary,
+                              num_topics=self.num_topics,
+                              passes=self.passes,
                               random_state=self.random_state)
     
-    def get_topics(self, top_n=10):
+    def get_topics(self):
         """
         Retrieves the topics.
 
-        :param top_n: Number of top words per topic
         :return: List of topics with top words
         """
-        return self.model.print_topics(num_topics=-1, num_words=top_n)
+        return self.model.print_topics(num_words=10)
     
     def get_document_topics(self, document):
         """
@@ -41,4 +49,4 @@ class HierarchicalDirichletProcess:
         :return: List of (topic_id, probability) tuples
         """
         bow = self.dictionary.doc2bow(document)
-        return self.model[bow]
+        return self.model.get_document_topics(bow)

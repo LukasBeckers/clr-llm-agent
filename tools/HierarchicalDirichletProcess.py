@@ -1,14 +1,16 @@
-class ProbabilisticLatentSemanticAnalysis:
-    def __init__(self, num_topics=10, passes=10, random_state=42):
-        """
-        Initializes the PLSA model.
+from gensim.models import HdpModel
+import gensim
+from gensim import corpora
+from gensim.models import LdaModel
 
-        :param num_topics: Number of topics to extract
-        :param passes: Number of passes through the corpus during training
+
+class HierarchicalDirichletProcess:
+    def __init__(self, random_state=42):
+        """
+        Initializes the HDP model.
+
         :param random_state: Seed for reproducibility
         """
-        self.num_topics = num_topics
-        self.passes = passes
         self.random_state = random_state
         self.dictionary = None
         self.corpus = None
@@ -16,27 +18,24 @@ class ProbabilisticLatentSemanticAnalysis:
 
     def fit(self, documents):
         """
-        Fits the PLSA model to the documents.
+        Fits the HDP model to the documents.
 
         :param documents: List of preprocessed documents (list of tokens)
         """
         self.dictionary = corpora.Dictionary(documents)
         self.corpus = [self.dictionary.doc2bow(doc) for doc in documents]
-        # In Gensim, setting alpha='asymmetric' makes it behave more like PLSA
-        self.model = LdaModel(corpus=self.corpus,
+        self.model = HdpModel(corpus=self.corpus,
                               id2word=self.dictionary,
-                              num_topics=self.num_topics,
-                              passes=self.passes,
-                              random_state=self.random_state,
-                              alpha='asymmetric')
+                              random_state=self.random_state)
     
-    def get_topics(self):
+    def get_topics(self, top_n=10):
         """
         Retrieves the topics.
 
+        :param top_n: Number of top words per topic
         :return: List of topics with top words
         """
-        return self.model.print_topics(num_words=10)
+        return self.model.print_topics(num_topics=-1, num_words=top_n)
     
     def get_document_topics(self, document):
         """
@@ -46,4 +45,4 @@ class ProbabilisticLatentSemanticAnalysis:
         :return: List of (topic_id, probability) tuples
         """
         bow = self.dictionary.doc2bow(document)
-        return self.model.get_document_topics(bow)
+        return self.model[bow]

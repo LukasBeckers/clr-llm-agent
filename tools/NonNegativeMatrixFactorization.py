@@ -1,6 +1,7 @@
 from sklearn.decomposition import NMF
 from sklearn.feature_extraction.text import TfidfVectorizer
 
+
 class NonNegativeMatrixFactorization:
     def __init__(self, num_topics=10, random_state=42, max_iter=200):
         """

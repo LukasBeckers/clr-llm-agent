@@ -1,4 +1,7 @@
 import tomotopy as tp
+import gensim
+from gensim import corpora
+from gensim.models import LdaModel
 
 class CorrelatedTopicModel:
     def __init__(self, num_topics=10, alpha='symmetric', eta='auto', seed=42):

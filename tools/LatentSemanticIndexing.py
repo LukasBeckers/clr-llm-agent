@@ -1,4 +1,8 @@
 from gensim.models import LsiModel
+import gensim
+from gensim import corpora
+from gensim.models import LdaModel
+
 
 class LatentSemanticIndexing:
     def __init__(self, num_topics=10):

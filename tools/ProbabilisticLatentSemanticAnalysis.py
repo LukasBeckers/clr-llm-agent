@@ -2,10 +2,11 @@ import gensim
 from gensim import corpora
 from gensim.models import LdaModel
 
-class LatentDirichletAllocation:
+
+class ProbabilisticLatentSemanticAnalysis:
     def __init__(self, num_topics=10, passes=10, random_state=42):
         """
-        Initializes the LDA model.
+        Initializes the PLSA model.
 
         :param num_topics: Number of topics to extract
         :param passes: Number of passes through the corpus during training
@@ -20,17 +21,19 @@ class LatentDirichletAllocation:
 
     def fit(self, documents):
         """
-        Fits the LDA model to the documents.
+        Fits the PLSA model to the documents.
 
         :param documents: List of preprocessed documents (list of tokens)
         """
         self.dictionary = corpora.Dictionary(documents)
         self.corpus = [self.dictionary.doc2bow(doc) for doc in documents]
+        # In Gensim, setting alpha='asymmetric' makes it behave more like PLSA
         self.model = LdaModel(corpus=self.corpus,
                               id2word=self.dictionary,
                               num_topics=self.num_topics,
                               passes=self.passes,
-                              random_state=self.random_state)
+                              random_state=self.random_state,
+                              alpha='asymmetric')
     
     def get_topics(self):
         """

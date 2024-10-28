@@ -9,6 +9,7 @@ nltk.download('punkt')
 nltk.download('averaged_perceptron_tagger')
 nltk.download('wordnet')
 
+
 class CohMetrix:
     def __init__(self):
         pass
