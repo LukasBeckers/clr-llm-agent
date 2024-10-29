@@ -4,49 +4,88 @@ from gensim.models import LdaModel
 
 
 class LatentDirichletAllocation:
-    def __init__(self, num_topics=10, passes=10, random_state=42):
+    def __init__(self):
         """
-        Initializes the LDA model.
+        Initializes the LDA model class.
+        No arguments are required during initialization.
+        """
+        pass
 
-        :param num_topics: Number of topics to extract
-        :param passes: Number of passes through the corpus during training
-        :param random_state: Seed for reproducibility
+    def __call__(
+        self,
+        documents: List[Dict[str, Any]],
+        num_topics: int = 10,
+        passes: int = 1,
+        iterations: int = 50,
+        alpha: Any = "symmetric",
+        beta: Any = "auto",
+        random_state: int = None,
+        chunksize: int = 1000,
+    ) -> Tuple[LdaModel, corpora.Dictionary, List[List[tuple]]]:
         """
-        self.num_topics = num_topics
-        self.passes = passes
-        self.random_state = random_state
-        self.dictionary = None
-        self.corpus = None
-        self.model = None
+        Performs LDA topic modeling on the provided documents.
 
-    def fit(self, documents):
-        """
-        Fits the LDA model to the documents.
+        Parameters:
+            documents (List[Dict[str, Any]]):
+                A list of dictionaries, each containing at least the key "Abstract Normalized".
+            num_topics (int, optional):
+                The number of topics to extract. Default is 10.
+            passes (int, optional):
+                Number of passes through the corpus during training. Default is 1.
+            iterations (int, optional):
+                Maximum number of iterations through the corpus when inferring the topic distribution. Default is 50.
+            alpha (str or list, optional):
+                Hyperparameter that affects the sparsity of the document-topic distribution.
+                Can be 'symmetric', 'asymmetric', or a list of values. Default is 'symmetric'.
+            beta (str or float, optional):
+                Hyperparameter that affects the sparsity of the topic-word distribution.
+                Can be 'auto', 'symmetric', or a float value. Default is 'auto'.
+            random_state (int, optional):
+                Seed for random number generator for reproducibility. Default is None.
+            chunksize (int, optional):
+                Number of documents to be used in each training chunk. Default is 1000.
 
-        :param documents: List of preprocessed documents (list of tokens)
+        Returns:
+            Tuple containing:
+                - LdaModel: The trained LDA model.
+                - corpora.Dictionary: The dictionary mapping of word IDs to words.
+                - List[List[tuple]]: The corpus in BoW format.
         """
-        self.dictionary = corpora.Dictionary(documents)
-        self.corpus = [self.dictionary.doc2bow(doc) for doc in documents]
-        self.model = LdaModel(corpus=self.corpus,
-                              id2word=self.dictionary,
-                              num_topics=self.num_topics,
-                              passes=self.passes,
-                              random_state=self.random_state)
-    
-    def get_topics(self):
-        """
-        Retrieves the topics.
+        # Step 1: Extract and tokenize the "Abstract Normalized" text
+        texts = []
+        for doc in documents:
+            abstract = doc.get("Abstract Normalized", "")
+            if isinstance(abstract, str):
+                tokens = (
+                    abstract.split()
+                )  # Assuming text is already normalized and tokenized by spaces
+                texts.append(tokens)
+            else:
+                # If "Abstract Normalized" is not a string, skip or handle accordingly
+                texts.append([])
 
-        :return: List of topics with top words
-        """
-        return self.model.print_topics(num_words=10)
-    
-    def get_document_topics(self, document):
-        """
-        Gets the topic distribution for a single document.
+        # Step 2: Create a dictionary and filter out extremes to limit the number of features
+        dictionary = corpora.Dictionary(texts)
+        # Optionally, you can add dictionary filtering here if needed
+        # For example:
+        # dictionary.filter_extremes(no_below=5, no_above=0.5)
 
-        :param document: Preprocessed document (list of tokens)
-        :return: List of (topic_id, probability) tuples
-        """
-        bow = self.dictionary.doc2bow(document)
-        return self.model.get_document_topics(bow)
+        # Step 3: Convert documents to Bag-of-Words format
+        corpus = [dictionary.doc2bow(text) for text in texts]
+
+        # Step 4: Initialize and train the LDA model
+        lda_model = LdaModel(
+            corpus=corpus,
+            id2word=dictionary,
+            num_topics=num_topics,
+            passes=passes,
+            iterations=iterations,
+            alpha=alpha,
+            eta=beta,
+            random_state=random_state,
+            chunksize=chunksize,
+            update_every=1,
+            per_word_topics=True,
+        )
+
+        return lda_model, dictionary, corpus

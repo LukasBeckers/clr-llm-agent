@@ -1,5 +1,6 @@
 from step3.prompts import (
-    algorithms_selector_prompt
+    algorithms_selector_prompt,
+    algorithms_selector_prompt_v2
 )
 from langchain_community.chat_models import ChatOpenAI
 from agents.ReasoningTextGenerator import ReasoningTextGenerator
@@ -10,7 +11,7 @@ class AlgorithmsSelector(ReasoningTextGenerator):
     def __init__(
         self,
         llm: ChatOpenAI,
-        prompt_explanation: str = algorithms_selector_prompt,
+        prompt_explanation: str = algorithms_selector_prompt_v2,
         start_answer_token: str = "<START_SEARCH_STRINGS>",
         stop_answer_token: str = "<STOP_SEARCH_STRINGS>",
     ):
