@@ -4,7 +4,7 @@ from langchain_openai import ChatOpenAI
 from collections import defaultdict
 from datetime import datetime
 from typing import List, Dict, Tuple
-
+from agents.TextGenerator import TextGenerator
 
 class BasicDatasetAnalyzer:
     """
@@ -24,6 +24,9 @@ class BasicDatasetAnalyzer:
             dataset (List[Dict]): A list of publication records, each represented as a dictionary.
         """
         self.llm = llm
+        self.data_set_describer = TextGenerator(
+            prompt_explanation="You are an expert at describing datasets",
+            llm=self.llm)
 
     def analyze_dataset(self) -> Dict:
         """
@@ -95,7 +98,7 @@ class BasicDatasetAnalyzer:
 
         prompt += "\nDescribe the dataset characteristics and any observable trends."
 
-        response = self.llm.generate(prompt)
+        response = self.data_set_describer.generate(input_text=prompt)
         return response
 
     def __call__(self, dataset: List[Dict]) -> Tuple[Dict, str]:

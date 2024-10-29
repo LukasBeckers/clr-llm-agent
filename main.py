@@ -76,6 +76,6 @@ if __name__ == "__main__":
     print("Dataset Evaluation", basic_dataset_evalutation)
     print("Dataset_description", basic_dataset_description)
 
-    algorithm_selector(
-       rq, "Explicating", basic_dataset_evaluation=basic_dataset_evalutation
+    selected_algorithms, reasoning_steps = algorithm_selector(
+       rq, rq_class, basic_dataset_evaluation=basic_dataset_evalutation
     )
