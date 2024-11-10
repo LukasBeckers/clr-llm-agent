@@ -4,7 +4,7 @@ from step3.prompts import (
 )
 from langchain_community.chat_models import ChatOpenAI
 from agents.ReasoningTextGenerator import ReasoningTextGenerator
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Dict, Union
 
 
 class AlgorithmsSelector(ReasoningTextGenerator):
@@ -29,7 +29,7 @@ class AlgorithmsSelector(ReasoningTextGenerator):
         research_queston_class: str,
         basic_dataset_evaluation: str,
         critic: Optional[str] = None,
-    ) -> Tuple[List[Tuple[str, str]], str]:
+    ) -> Dict[str, Union[List[Tuple[str, str]], str]]:
 
         # Construct the input prompt for the ReasoningTextGenerator
         if critic:
@@ -65,4 +65,4 @@ class AlgorithmsSelector(ReasoningTextGenerator):
             algorithm = algorithm.strip(', "()[]"`')
             algorithms.append(algorithm)
 
-        return algorithms, reasoning_steps
+        return {"algorithms": algorithms, "reasoning_steps": reasoning_steps}
