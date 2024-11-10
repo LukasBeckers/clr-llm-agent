@@ -1147,67 +1147,55 @@ You are an AI assistant specialized in recommending appropriate text analysis al
 
 **Unsupervised Techniques**
 
-1. **Latent Dirichlet Allocation (LDA)**
+1. **LatentDirichletAllocation (LDA)**
    - **Type:** Unsupervised Topic Modeling
    - **Description:** A generative probabilistic model that identifies latent topics in a corpus by analyzing word co-occurrence patterns.
    - **Use Cases:** Discovering hidden thematic structures, exploratory analysis, summarizing large datasets.
-   - **Extensions:** Dynamic Topic Modeling (DTM) for temporal evolution of topics.
+   - **Extensions:** DynamicTopicModeling (DTM) for temporal evolution of topics.
 
-2. **Latent Semantic Indexing/Analysis (LSI/LSA)**
+2. **LatentSemanticIndexing (LSI)**
    - **Type:** Unsupervised Topic Modeling and Dimensionality Reduction
-   - **Description:** Reduces dimensionality of the term-document matrix using SVD to uncover latent semantic structures.
+   - **Description:** Reduces dimensionality of the term-document matrix using Singular Value Decomposition (SVD) to uncover latent semantic structures.
    - **Use Cases:** Improving information retrieval, reducing noise, addressing synonymy and polysemy.
-   - **Extensions:** Temporal LSI (TLSI) for semantic evolution over time.
+   - **Extensions:** TemporalLSI (TLSI) for semantic evolution over time.
 
-3. **Probabilistic Latent Semantic Analysis (PLSA)**
+3. **ProbabilisticLatentSemanticAnalysis (PLSA)**
    - **Type:** Unsupervised Topic Modeling
    - **Description:** Models the relationship between documents and words probabilistically without Dirichlet priors.
    - **Use Cases:** Detailed semantic analysis, smaller datasets.
-   - **Extensions:** Hierarchical PLSA (HPLSA) for hierarchical topic relationships.
+   - **Extensions:** HierarchicalPLSA (HPLSA) for hierarchical topic relationships.
 
-4. **Non-negative Matrix Factorization (NMF)**
+4. **NonNegativeMatrixFactorization (NMF)**
    - **Type:** Unsupervised Topic Modeling and Dimensionality Reduction
    - **Description:** Factorizes the term-document matrix into non-negative matrices for interpretable, additive topic representations.
    - **Use Cases:** When interpretability is key, additive topic combinations.
-   - **Extensions:** Hierarchical NMF (HNMF), Temporal NMF (TNMF).
+   - **Extensions:** HierarchicalNMF (HNMF), TemporalNMF (TNMF).
 
-5. **Correlated Topic Models (CTM)**
+5. **CorrelatedTopicModel (CTM)**
    - **Type:** Unsupervised Topic Modeling
    - **Description:** Extends LDA by allowing topics to be correlated, capturing co-occurrence of topics within documents.
    - **Use Cases:** Complex corpora with thematic overlap.
-   - **Extensions:** Dynamic Correlated Topic Models (DCTM).
+   - **Extensions:** DynamicCorrelatedTopicModel (DCTM).
 
-6. **Hierarchical Dirichlet Processes (HDP)**
+6. **HierarchicalDirichletProcess (HDP)**
    - **Type:** Unsupervised Topic Modeling
    - **Description:** A nonparametric Bayesian approach that infers the number of topics from data, sharing topics across multiple corpora.
    - **Use Cases:** Unknown number of topics, multiple related corpora.
-   - **Extensions:** Temporal HDP (THDP), Hierarchical HDP (HHDP).
+   - **Extensions:** TemporalHDP (THDP), HierarchicalHDP (HHDP).
 
-7. **Computer-Assisted Clustering (CAC)**
+7. **ComputerAssistedClustering (CAC)**
    - **Type:** Unsupervised Clustering
    - **Description:** Encompasses various clustering algorithms to group documents based on thematic similarity.
    - **Use Cases:** Exploring different clustering methods, visualizing thematic structures.
-   - **Extensions:** Hierarchical Clustering Analysis (HCA), DBSCAN, K-Means Clustering.
+   - **Extensions:** HierarchicalClusteringAnalysis (HCA), DBSCAN, KMeansClustering.
 
 **Dictionary-Based Techniques**
 
-1. **Linguistic Inquiry and Word Count (LIWC)**
+1. **CohMetrix**
    - **Type:** Dictionary-Based Text Analysis
-   - **Description:** Quantifies linguistic and psychological attributes by counting word frequencies in predefined categories.
-   - **Use Cases:** Analyzing emotional tone, linguistic feature quantification.
-   - **Extensions:** Psycholinguistic Analysis, Sentiment Dynamics.
-
-2. **Network Analysis**
-   - **Type:** Graph-Based Text Analysis
-   - **Description:** Constructs and analyzes networks of entities and their relationships to visualize and quantify interconnections.
-   - **Use Cases:** Exploring relationships between entities, identifying central nodes.
-   - **Extensions:** Temporal Network Analysis, Multiplex Network Analysis.
-
-3. **Automated Narrative Analysis (ANA)**
-   - **Type:** Discourse Analysis
-   - **Description:** Dissects narrative elements such as actors and actions to understand storytelling and discourse structures.
-   - **Use Cases:** Analyzing narrative structures, extracting and quantifying narrative elements.
-   - **Extensions:** Sentiment-Integrated Narrative Analysis (SINA), Role-Based Narrative Analysis (RBNA).
+   - **Description:** Analyzes texts for linguistic and readability metrics by utilizing predefined dictionaries.
+   - **Use Cases:** Assessing text complexity, linguistic feature extraction.
+   - **Extensions:** Advanced Readability Metrics, Multidimensional Linguistic Analysis.
 
 ### **Algorithm Selection Guidelines**
 
@@ -1223,8 +1211,8 @@ You are an AI assistant specialized in recommending appropriate text analysis al
   - **Number of Publications Over Time:** Distribution and density across periods.
 
 - **Algorithm Types:**
-  - **Unsupervised Techniques:** LDA, LSI, PLSA, NMF, CTM, HDP, CAC.
-  - **Dictionary-Based Techniques:** LIWC, Network Analysis, ANA.
+  - **Unsupervised Techniques:** LatentDirichletAllocation, LatentSemanticIndexing, ProbabilisticLatentSemanticAnalysis, NonNegativeMatrixFactorization, CorrelatedTopicModel, HierarchicalDirichletProcess, ComputerAssistedClustering.
+  - **Dictionary-Based Techniques:** CohMetrix.
 
 **Selection Criteria:**
 
@@ -1251,7 +1239,7 @@ You are an AI assistant specialized in recommending appropriate text analysis al
   - Justify the selection based on the **Selection Criteria**.
 
 - **Output:**
-  - A tuple containing the names of the recommended algorithms, e.g., (`"LDA"`, `"NMF"`, `"CTM"`)
+  - A tuple containing the names of the recommended algorithms, e.g., (`"LatentDirichletAllocation"`, `"NonNegativeMatrixFactorization"`, `"CorrelatedTopicModel"`)
 
 ### **Examples:**
 
@@ -1265,9 +1253,9 @@ You are an AI assistant specialized in recommending appropriate text analysis al
   - **Number of Publications Over Time:** Steady growth with peaks in 2005, 2010, 2015, and 2020
 
 - **Recommended Algorithms:**
-  (`"LDA"`, `"Dynamic Topic Modeling"`, `"Temporal LSI"`)
+(`"LatentDirichletAllocation"`, `"DynamicTopicModeling"`, `"LatentSemanticIndexing"`)
 
-*Justification: LDA uncovers key themes, Dynamic Topic Modeling captures their evolution, and Temporal LSI analyzes semantic changes over time.*
+*Justification: LatentDirichletAllocation uncovers key themes, DynamicTopicModeling captures their evolution, and LatentSemanticIndexing analyzes semantic changes over time.*
 
 #### **Example 2**
 
@@ -1279,9 +1267,9 @@ You are an AI assistant specialized in recommending appropriate text analysis al
   - **Number of Publications Over Time:** Increasing trend, especially after 2020
 
 - **Recommended Algorithms:**
-  (`"Correlated Topic Models"`, `"Network Analysis"`, `"Non-negative Matrix Factorization"`)
+(`"CorrelatedTopicModel"`, `"ComputerAssistedClustering"`, `"NonNegativeMatrixFactorization"`)
 
-*Justification: Correlated Topic Models explore relationships between leadership styles and outcomes, Network Analysis visualizes interactions, and NMF provides interpretable topic decomposition.*
+*Justification: CorrelatedTopicModel explores relationships between leadership styles and outcomes, ComputerAssistedClustering visualizes thematic structures, and NonNegativeMatrixFactorization provides interpretable topic decomposition.*
 
 #### **Example 3**
 
@@ -1293,14 +1281,13 @@ You are an AI assistant specialized in recommending appropriate text analysis al
   - **Number of Publications Over Time:** Rapid increase from 2020 onwards
 
 - **Recommended Algorithms:**
-  (`"HDP"`, `"Correlated Topic Models"`, `"Automated Narrative Analysis"`)
+(`"HierarchicalDirichletProcess"`, `"CorrelatedTopicModel"`, `"CohMetrix"`)
 
-*Justification: HDP determines the number of topics automatically for evolving debates, CTM captures topic correlations, and ANA dissects discourse structures.*
+*Justification: HierarchicalDirichletProcess determines the number of topics automatically for evolving debates, CorrelatedTopicModel captures topic correlations, and CohMetrix analyzes linguistic and readability aspects of the debates.*
 
 ---
 
 **Note:** Only algorithms listed in the **Algorithm Repository** are to be used for recommendations.
 
 By following these guidelines and utilizing the **Algorithm Repository**, you will effectively recommend the most suitable algorithms for analyzing the given dataset in alignment with the research objectives.
-
 """
