@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import List, Dict, Tuple
 from agents.TextGenerator import TextGenerator
 
+
 class BasicDatasetAnalyzer:
     """
     A class to perform basic analysis of a dataset of publications and generate descriptive summaries using an LLM.
@@ -26,7 +27,8 @@ class BasicDatasetAnalyzer:
         self.llm = llm
         self.data_set_describer = TextGenerator(
             prompt_explanation="You are an expert at describing datasets",
-            llm=self.llm)
+            llm=self.llm,
+        )
 
     def analyze_dataset(self) -> Dict:
         """
@@ -39,14 +41,18 @@ class BasicDatasetAnalyzer:
         publication_years = []
 
         for record in self.dataset:
-            pub_date_str = record.get('PublicationDate', '')
+            pub_date_str = record.get("PublicationDate", "")
             try:
                 # Attempt to parse the publication date
-                pub_date = datetime.strptime(pub_date_str, '%Y-%b')  # Example format: '2016-Jun'
+                pub_date = datetime.strptime(
+                    pub_date_str, "%Y-%b"
+                )  # Example format: '2016-Jun'
                 publication_years.append(pub_date.year)
             except ValueError:
                 try:
-                    pub_date = datetime.strptime(pub_date_str, '%Y-%m-%d')  # Example format: '2016-02-01'
+                    pub_date = datetime.strptime(
+                        pub_date_str, "%Y-%m-%d"
+                    )  # Example format: '2016-02-01'
                     publication_years.append(pub_date.year)
                 except ValueError:
                     # If date parsing fails, skip the record or handle accordingly
@@ -66,12 +72,14 @@ class BasicDatasetAnalyzer:
                 publications_over_time[year] += 1
 
             # Convert defaultdict to regular dict and sort by year
-            publications_over_time = dict(sorted(publications_over_time.items()))
+            publications_over_time = dict(
+                sorted(publications_over_time.items())
+            )
 
         analysis = {
             "Total Publications": total_publications,
             "Date Range": date_range,
-            "Publications Over Time": publications_over_time
+            "Publications Over Time": publications_over_time,
         }
 
         return analysis
@@ -93,10 +101,12 @@ class BasicDatasetAnalyzer:
             f"Number of Publications Over Time:\n"
         )
 
-        for year, count in analysis['Publications Over Time'].items():
+        for year, count in analysis["Publications Over Time"].items():
             prompt += f"  {year}: {count} publications\n"
 
-        prompt += "\nDescribe the dataset characteristics and any observable trends."
+        prompt += (
+            "\nDescribe the dataset characteristics and any observable trends."
+        )
 
         response = self.data_set_describer.generate(input_text=prompt)
         return response
@@ -113,72 +123,7 @@ class BasicDatasetAnalyzer:
         print("Analysis", analysis)
         description = self.describe_analysis(analysis)
         return analysis, description
-    
 
-# Example Usage
+
 if __name__ == "__main__":
-    # Load environment variables from .env file
-    load_dotenv()
-    openai_api_key = os.getenv("OPENAI_API_KEY")
-
-    def create_llm(llm_name: str, temperature: float = 0.2) -> ChatOpenAI:
-        """
-        Creates an instance of the ChatOpenAI language model.
-
-        Args:
-            llm_name (str): The name of the OpenAI model to use.
-            temperature (float, optional): Sampling temperature. Defaults to 0.2.
-
-        Returns:
-            ChatOpenAI: An instance of the ChatOpenAI model.
-        """
-        return ChatOpenAI(
-            model_name=llm_name,
-            openai_api_key=openai_api_key,
-            temperature=temperature
-        )
-
-    # Initialize LLM instances
-    gpt_4 = create_llm("gpt-4")
-
-    # Example dataset
-    dataset = [
-        {
-            'PMID': '26690495',
-            'Title': 'Ultra-fast magnetic resonance encephalography of physiological brain activity - Glymphatic pulsation mechanisms?',
-            'Abstract': "The theory on the glymphatic convection mechanism of cerebrospinal fluid holds that cardiac pulsations...",
-            'Authors': ['Vesa Kiviniemi', 'Xindi Wang', 'Vesa Korhonen', 'Tuija Keinänen', 'Timo Tuovinen', 'Joonas Autio', 'Pierre LeVan', 'Shella Keilholz', 'Yu-Feng Zang', 'Jürgen Hennig', 'Maiken Nedergaard'],
-            'PublicationDate': '2016-Jun',
-            'Keywords': ['Resting state', 'blood oxygen level dependent', 'cardiorespiratory', 'glymphatics', 'magnetic resonance encephalography'],
-            'Journal': 'Journal of cerebral blood flow and metabolism',
-            'Copyright': '© The Author(s) 2015.',
-            'Abstract Normalized': 'theori glymphat convect mechan cerebrospin fluid hold cardiac pulsat part pump...'
-        },
-        {
-            'PMID': '26688469',
-            'Title': 'Rapid intranasal delivery of chloramphenicol acetyltransferase in the active form to different brain regions as a model for enzyme therapy in the CNS.',
-            'Abstract': 'The blood brain barrier (BBB) is critical for maintaining central nervous system (CNS) homeostasis by restricting entry of potentially toxic substances...',
-            'Authors': ['Abhilash P Appu', 'Peethambaran Arun', 'Jishnu K S Krishnan', 'John R Moffett', 'Aryan M A Namboodiri'],
-            'PublicationDate': '2016-Feb-01',
-            'Keywords': ['Bioavailability', 'Catalytic bioscavenger', 'Enzyme deficiency diseases', 'Glymphatic system', 'Organophosphate chemical threat agents'],
-            'Journal': 'Journal of neuroscience methods',
-            'BACKGROUND': 'The blood brain barrier (BBB) is critical for maintaining central nervous system (CNS) homeostasis...',
-            'NEW METHOD': 'The aim of this work is to provide a sensitive model system for analyzing the rapid delivery of active enzymes...',
-            'RESULTS': 'We tested intranasal delivery of chloramphenicol acetyltransferase (CAT)...',
-            'COMPARISON WITH EXISTING METHOD (S)': 'Intranasal administration of active enzymes in conjunction with MMP-9 to the CNS is both rapid and effective.',
-            'CONCLUSION': 'The present results suggest that intranasal enzyme therapy is a promising method...',
-            'Abstract Normalized': 'blood brain barrier bbb critic maintain central nervou system cn homeostasi restrict entri potenti toxic substanc...'
-        }
-    ]
-
-    # Initialize the DatasetAnalyzer
-    analyzer = DatasetAnalyzer(llm=gpt_4, dataset=dataset)
-
-    # Run the analysis
-    analysis_results, description = analyzer.run_analysis()
-
-    # Output the results
-    print("Analysis Results:")
-    print(analysis_results)
-    print("\nDescriptive Summary:")
-    print(description)
+    pass

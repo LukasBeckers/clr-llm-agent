@@ -1,10 +1,7 @@
 import tomotopy as tp
-import gensim
-from gensim import corpora
-from gensim.models import LdaModel
 
 class CorrelatedTopicModel:
-    def __init__(self, num_topics=10, alpha='symmetric', eta='auto', seed=42):
+    def __init__(self, num_topics=10, alpha="symmetric", eta="auto", seed=42):
         """
         Initializes the CTM model using tomotopy.
 
@@ -17,7 +14,9 @@ class CorrelatedTopicModel:
         self.alpha = alpha
         self.eta = eta
         self.seed = seed
-        self.model = tp.CTModel(k=self.num_topics, alpha=self.alpha, eta=self.eta, seed=self.seed)
+        self.model = tp.CTModel(
+            k=self.num_topics, alpha=self.alpha, eta=self.eta, seed=self.seed
+        )
         self.dictionary = None
 
     def fit(self, documents, iterations=1000):
@@ -31,7 +30,7 @@ class CorrelatedTopicModel:
         for doc in documents:
             self.model.add_doc(doc)
         self.model.train(iterations)
-    
+
     def get_topics(self, top_n=10):
         """
         Retrieves the topics.
@@ -44,7 +43,7 @@ class CorrelatedTopicModel:
             words = self.model.get_topic_words(i, top_n)
             topics.append((i, [word for word, _ in words]))
         return topics
-    
+
     def get_document_topics(self, document, top_n=10):
         """
         Gets the topic distribution for a single document.
@@ -60,3 +59,22 @@ class CorrelatedTopicModel:
         top_topics = sorted(topic_dist, key=lambda x: x[1], reverse=True)[:top_n]
         return top_topics
 
+    def __call__(self, documents, iterations=1000, top_n=10):
+        """
+        Makes the CorrelatedTopicModel instance callable. Performs topic modeling on the provided documents.
+
+        :param documents: List of preprocessed documents (list of tokens)
+        :param iterations: Number of training iterations
+        :param top_n: Number of top words per topic
+        :return: Dictionary containing model results
+        """
+        self.fit(documents, iterations=iterations)
+        topics = self.get_topics(top_n=top_n)
+        result = {
+            'num_topics': self.num_topics,
+            'topics': topics,
+            'alpha': self.alpha,
+            'eta': self.eta,
+            'seed': self.seed
+        }
+        return result
