@@ -58,7 +58,4 @@ class TextNormalizer:
             if word not in self.stop_words
         ]
 
-        # Join the tokens back into a single string
-        normalized_text = " ".join(processed_tokens)
-
-        return normalized_text
+        return processed_tokens

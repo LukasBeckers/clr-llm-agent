@@ -1,7 +1,8 @@
 import gensim
 from gensim import corpora
 from gensim.models import LsiModel
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
+import copy
 
 
 class LatentSemanticIndexing:
@@ -9,9 +10,9 @@ class LatentSemanticIndexing:
         self,
         num_topics: int = 10,
         num_words: int = 10,
-        random_state: int = None,
+        random_state: Optional[int] = None,
         chunksize: int = 1000,
-    ):
+    ) -> None:
         """
         Initializes the LSI model with specified hyperparameters.
 
@@ -20,25 +21,31 @@ class LatentSemanticIndexing:
         :param random_state: Seed for random number generator for reproducibility.
         :param chunksize: Number of documents to be used in each training chunk.
         """
-        self.num_topics = num_topics
-        self.num_words = num_words
-        self.random_state = random_state
-        self.chunksize = chunksize
+        self.num_topics: int = num_topics
+        self.num_words: int = num_words
+        self.random_state: Optional[int] = random_state
+        self.chunksize: int = chunksize
 
-        self.dictionary = None
-        self.corpus = None
-        self.model = None
+        self.dictionary: Optional[corpora.Dictionary] = None
+        self.corpus: Optional[List[List[Tuple[int, int]]]] = None
+        self.model: Optional[LsiModel] = None
 
-    def fit(self, documents: List[List[str]]):
+    def fit(self, documents: List[List[str]]) -> None:
         """
         Fits the LSI model to the documents.
 
         :param documents: List of preprocessed documents (list of tokens).
         """
-        self.dictionary = corpora.Dictionary(documents)
+        # Create a deep copy to ensure original documents are not modified
+        documents_copy: List[List[str]] = copy.deepcopy(documents)
+
+        # Create a Gensim dictionary and corpus
+        self.dictionary = corpora.Dictionary(documents_copy)
         # Optionally, filter extremes to limit the number of features
         # self.dictionary.filter_extremes(no_below=5, no_above=0.5)
-        self.corpus = [self.dictionary.doc2bow(doc) for doc in documents]
+        self.corpus = [self.dictionary.doc2bow(doc) for doc in documents_copy]
+
+        # Initialize and train the LSI model
         self.model = LsiModel(
             corpus=self.corpus,
             id2word=self.dictionary,
@@ -53,6 +60,8 @@ class LatentSemanticIndexing:
 
         :return: List of topics with top words.
         """
+        if self.model is None:
+            raise ValueError("Model has not been trained yet. Call the instance with documents first.")
         return self.model.print_topics(num_topics=self.num_topics, num_words=self.num_words)
 
     def get_document_topics(self, document: List[str], top_n: int = 10) -> List[Tuple[int, float]]:
@@ -65,19 +74,40 @@ class LatentSemanticIndexing:
         """
         if self.model is None or self.dictionary is None:
             raise ValueError("Model has not been trained yet. Call the instance with documents first.")
+        if not isinstance(document, list) or not all(isinstance(token, str) for token in document):
+            raise ValueError("The document must be a list of strings.")
         bow = self.dictionary.doc2bow(document)
-        return self.model.get_document_topics(bow, minimum_probability=0)
+        topic_distribution = self.model.get_document_topics(bow, minimum_probability=0)
+        top_topics = sorted(topic_distribution, key=lambda x: x[1], reverse=True)[:top_n]
+        return top_topics
 
-    def __call__(self, documents: List[List[str]]) -> Dict[str, Any]:
+    def __call__(self, documents: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
         Makes the LatentSemanticIndexing instance callable. Performs LSI topic modeling on the provided documents.
 
-        :param documents: List of preprocessed documents (list of tokens).
+        :param documents: List of document dictionaries.
         :return: Dictionary containing the trained model, dictionary, corpus, and topics.
         """
-        self.fit(documents)
-        topics = self.get_topics()
-        result = {
+        # Create a deep copy to ensure original documents are not modified
+        documents_copy: List[Dict[str, Any]] = copy.deepcopy(documents)
+
+        # Extract "Abstract Normalized" from each document
+        abstracts: List[List[str]] = []
+        for doc in documents_copy:
+            abstract_normalized = doc.get("Abstract Normalized")
+            if not isinstance(abstract_normalized, list) or not all(isinstance(token, str) for token in abstract_normalized):
+                raise ValueError(
+                    "Each document must contain an 'Abstract Normalized' field as a list of strings."
+                )
+            abstracts.append(abstract_normalized)
+
+        # Fit the model
+        self.fit(abstracts)
+
+        # Retrieve topics
+        topics: List[str] = self.get_topics()
+
+        result: Dict[str, Any] = {
             'num_topics': self.num_topics,
             'num_words': self.num_words,
             'chunksize': self.chunksize,

@@ -65,4 +65,7 @@ class AlgorithmsSelector(ReasoningTextGenerator):
             algorithm = algorithm.strip(', "()[]"`')
             algorithms.append(algorithm)
 
+        #print("Algorithms raw in Algorithms selector", algorithms_raw)
+        #print("Algorithms", algorithms)
+
         return {"algorithms": algorithms, "reasoning_steps": reasoning_steps}

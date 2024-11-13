@@ -5,3 +5,5 @@
 set_key.py
 key.env
 .env
+temp/
+!temp/.gitkeep

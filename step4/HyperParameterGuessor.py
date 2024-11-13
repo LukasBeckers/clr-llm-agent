@@ -4,7 +4,7 @@ from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 from langchain_community.chat_models import ChatOpenAI
 import re
-from typing import Tuple, Optional, Dict
+from typing import Tuple, Optional, Dict, Any
 from agents.utils import json_to_dict  
 from agents.ReasoningTextGenerator import ReasoningTextGenerator
 
@@ -62,7 +62,6 @@ class HyperParameterGuessor(ReasoningTextGenerator):
             Critic: "{critic}"
             Dataset Basic Evaluation: {basic_dataset_evaluation}
 
-
             Please generate a set of hyperparameters for the specified algorithm based on the Research Question and the basic evaluation of the Dataset.
             """
         else:
@@ -78,8 +77,12 @@ class HyperParameterGuessor(ReasoningTextGenerator):
         # Generate hyperparameters and reasoning steps
         hyperparameters_raw, reasoning_steps = self.generate(input_text)
 
+        print("Hyperparameters_raw", hyperparameters_raw)
+
         # Convert the JSON output to a dictionary
         hyperparameters_dict = json_to_dict(hyperparameters_raw)
+
+        print("Hyperparameters_dict", hyperparameters_dict)
 
         if hyperparameters_dict is None:
             raise ValueError("Failed to parse hyperparameters JSON.")
