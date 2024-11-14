@@ -7,12 +7,13 @@ class CorrelatedTopicModel:
     def __init__(
         self,
         num_topics: int = 10,
-        alpha: str = "symmetric",
-        eta: str = "auto",
+        alpha: str = 1.,
+        eta: str = 1,
         seed: int = 42,
         iterations: int = 1000,
         top_n: int = 10
     ) -> None:
+        
         """
         Initializes the CTM model using tomotopy.
 
@@ -29,8 +30,9 @@ class CorrelatedTopicModel:
         self.seed: int = seed
         self.iterations: int = iterations
         self.top_n: int = top_n
+        print("k", self.num_topics, "alpha", self.alpha, "eta", self.eta, "seed", self.seed)
         self.model: tp.CTModel = tp.CTModel(
-            k=self.num_topics, alpha=self.alpha, eta=self.eta, seed=self.seed
+            k=self.num_topics, smoothing_alpha=self.alpha, eta=self.eta, seed=self.seed
         )
         self.dictionary: Optional[tp.Dictionary] = None
 
@@ -40,7 +42,7 @@ class CorrelatedTopicModel:
 
         :param documents: List of preprocessed documents (list of tokens)
         """
-        self.model.reset()
+        #self.model.reset()
         for doc in documents:
             self.model.add_doc(doc)
         self.model.train(self.iterations)

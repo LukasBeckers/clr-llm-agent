@@ -7,3 +7,5 @@ key.env
 .env
 temp/
 !temp/.gitkeep
+visualizations/
+!visualizations/.gitkeep

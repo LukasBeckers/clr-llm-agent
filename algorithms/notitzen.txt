@@ -1,10 +1,25 @@
+!!! Change everything to Tomotopy !!! It works best
+
+!!! Check Parameters for all Algorithms
+
+!!! Make Prompt or a prompt explanation part of the classes 
+
+!!! Set all seeds to 42
+
+!!! add a _visualize method to each algorithm
+
 CohMetrix
+
+# Check Parameters!!!
 
 Works, but applied on whole Dataset it makes little sense, So i must give the 
 Model the option to apply subsets of the dataset to the CohMetrix Algorithm
 
 ComputerAssistedClustering 
-
 Works, but could use a functionality that allows for automatic number of 
 clusters detection using an elbow curve functionality
+
+
+CorrelatedTopicModeling 
+works but the parameters need to be changed
 

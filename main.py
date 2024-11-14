@@ -53,7 +53,7 @@ if __name__ == "__main__":
 
     # Downloading the datasets from the datasources
     data_loader = DataLoader(email=email)
-    # data_set = data_loader(search_strings=search_strings[:2])
+    # data_set = data_loader(search_strings=search_strings[:])
 
     # with open(os.path.join("temp", "dataset"), "wb") as f:
     #     pk.dump(data_set, f)
@@ -71,7 +71,7 @@ if __name__ == "__main__":
 
     for data_point in dataset[:]:
         try:
-            data_point["Abstract Normalized"] = text_normalizer(
+            data_point["AbstractNormalized"] = text_normalizer(
                 data_point["Abstract"]
             )
         except KeyError:

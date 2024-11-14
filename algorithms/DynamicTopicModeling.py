@@ -1,51 +1,293 @@
-import gensim
-from gensim import corpora
-from gensim.models import LdaSeqModel
-from typing import List, Dict, Any, Tuple, Optional
+from tomotopy import DTModel, TermWeight, ParallelScheme
+from tomotopy.utils import Corpus
+from typing import List, Dict, Any, Tuple, Optional, Union, Callable
 from collections import defaultdict
 import copy
-from datetime import datetime
-import logging
+from datetime import datetime, timedelta
+from matplotlib import pyplot as plt
+import numpy as np
+import os
+
 
 class DynamicTopicModeling:
+    algorithm_description = """
+
+This text should help you in two cases: 
+    Selecting the algorithm for the right task and 
+    calibrating the algorithm after it is selected. 
+    
+KEY_FOR_ALGORITHM_SELECTION: DynamicTopicModeling
+
+Description: 
+    Dynamic Topic Modeling is an adaptation of the normal 
+    LatentDirichletAllocation algorithm. In contrast to the normal LDA
+    it analyzes how the distribution and composition of topics varies 
+    over time. 
+
+    You can set in how many evenly distributed timepoints the dataset will be
+    split (based on the PublicationDate of the articles in the dataset), and 
+    the topic distributions will be Calculated for each time-step. 
+    Choose the number of time-steps wisely, a to low number can lead to too low
+    resolution to see fine grained structures in the dataset while a to high 
+    number of timesteps can lead to datasparsity at some timesteps. Keep the 
+    size of your dataset in mind when choosing the number of timepoints, the 
+    default is 20.
+
+    the algorithms is structured in the following way:
+        it is a python class in which all hyperparameters are set in the 
+        __init__ function
+
+        it also has a __call__ method which only takes the dataset as input and
+        returns a dictionary with the results. 
+
+    The results of this algorithms when it eccecuted successfully are the 
+    following: 
+        1. The topic word distribution at every timepoint for every topic. 
+        2. The counts of words per topic at every timepoint for every topic. 
+
+        3. Based on the topic_counts a Plot that shows the word counts per 
+           topic overtime.
+        3.1 The topic distributions overtime. For all topics at all timepoints. 
+        4. A plot of the top n words for every topic at each timepoint. 
+
+    parameters that you can set for this algorithm are:  
+
+        tw : Union[int, TermWeight]
+            term weighting scheme in TermWeight. The default value is TermWeight.ONE
+
+        min_cf : int
+            minimum collection frequency of words. Words with a smaller collection frequency than min_cf are excluded from the model. The default value is 0, which means no words are excluded.
+
+        min_df : int
+            minimum document frequency of words. Words with a smaller document frequency than min_df are excluded from the model. The default value is 0, which means no words are excluded
+
+        rm_top : int
+            the number of top words to be removed. If you want to remove too common words from model, you can set this value to 1 or more. The default value is 0, which means no top words are removed.
+
+        k : int
+            the number of topics between 1 ~ 32767
+
+        t : int
+            the number of timpoints
+
+        alpha_var : float
+            transition variance of alpha (per-document topic distribution)
+
+        eta_var : float
+            variance of eta (topic distribution of each document) from its alpha
+
+        phi_var : float
+            transition variance of phi (word distribution of each topic)
+
+        lr_a : float
+            shape parameter a greater than zero, for SGLD step size calculated as e_i = a * (b + i) ^ (-c)
+
+        lr_b : float
+            shape parameter b greater than or equal to zero, for SGLD step size calculated as e_i = a * (b + i) ^ (-c)
+
+        lr_c : float
+            shape parameter c with range (0.5, 1], for SGLD step size calculated as e_i = a * (b + i) ^ (-c)
+
+        seed : int
+            random seed. default value is a random number from std::random_device{} in C++
+            Set the seed for reproducability always to 42 please. 
+
+        corpus : Corpus
+            a list of documents to be added into the model
+
+        transform : Callable[dict, dict]
+            a callable object to manipulate arbitrary keyword arguments for a specific topic model
+
+        Train Parameters
+
+        iter : int
+            the number of iterations of Gibbs-sampling
+
+        workers : int
+            an integer indicating the number of workers to perform samplings. If workers is 0, the number of cores in the system will be used.
+
+        parallel : Union[int, ParallelScheme]
+            the parallelism scheme for training. the default value is ParallelScheme.DEFAULT which means that tomotopy selects the best scheme by model.
+
+        freeze_topics : bool
+            prevents to create a new topic when training. Only valid for HLDAModel
+
+        callback_interval : int
+            the interval of calling callback function. If callback_interval <= 0, callback function is called at the beginning and the end of training.
+
+        callback : Callable[[LDAModel, int, int], None]
+            a callable object which is called every callback_interval iterations. It receives three arguments: the current model, the current number of iterations, and the total number of iterations.
+
+        show_progress : bool
+            If True, it shows progress bar during training using tqdm package.
+    
+        default Values are: 
+
+        tw: Union[TermWeight, int] = TermWeight.ONE,
+        min_cf: int = 0,
+        min_df: int = 0,
+        rm_top: int = 0,
+        k: int = 10,
+        t: int = 20,
+        alpha_var: float = 0.1,
+        eta_var: float = 0.1,
+        phi_var: float = 0.1,
+        lr_a: float = 0.01,
+        lr_b: float = 0.1,
+        lr_c: float = 0.55,
+        seed: int = 42,
+        corpus: Optional[Corpus] = None,
+        transform: Optional[Callable[dict, dict]] = None,
+        # Train parameters to be set by agent
+        iter=1000,
+        freeze_topics=False,
+        # Train Parameters to be set by human (default config)
+        workers: int = 4,
+        parallel: Union[int, ParallelScheme] = 1,
+        callback_interval=10,
+        callback=None,
+        show_progress=False,
+    
+        """
+
     def __init__(
         self,
-        num_topics: int = 5,  # Reduced number of topics
-        passes: int = 1,
-        iterations: int = 50,  # Reduced iterations
-        alpha: Any = "symmetric",  # Start with symmetric alpha
-        eta: Any = "auto",  # Explicitly set eta
-        random_state: Optional[int] = None,
-        chunksize: int = 1000,  # Adjusted chunksize
-        **kwargs: Any
+        # DTM init params
+        tw: Union[TermWeight, int] = TermWeight.ONE,
+        min_cf: int = 0,
+        min_df: int = 0,
+        rm_top: int = 0,
+        k: int = 5,
+        t: int = 20,
+        alpha_var: float = 0.1,
+        eta_var: float = 0.1,
+        phi_var: float = 0.1,
+        lr_a: float = 0.01,
+        lr_b: float = 0.1,
+        lr_c: float = 0.55,
+        seed: int = 42,
+        corpus: Optional[Corpus] = None,
+        transform: Optional[Callable[dict, dict]] = None,
+        # Train parameters to be set by agent
+        iter=1000,
+        freeze_topics=False,
+        # Train Parameters to be set by human (default config)
+        workers: int = 4,
+        parallel: Union[int, ParallelScheme] = 1,
+        callback_interval=10,
+        callback=None,
+        show_progress=False,
+        # General parameters
+        **kwargs: Any,
     ) -> None:
         """
-        Initializes the Dynamic Topic Modeling class with specified hyperparameters.
+        DT Parameters
+
+        tw : Union[int, TermWeight]
+            term weighting scheme in TermWeight. The default value is TermWeight.ONE
+
+        min_cf : int
+            minimum collection frequency of words. Words with a smaller collection frequency than min_cf are excluded from the model. The default value is 0, which means no words are excluded.
+
+        min_df : int
+            minimum document frequency of words. Words with a smaller document frequency than min_df are excluded from the model. The default value is 0, which means no words are excluded
+
+        rm_top : int
+            the number of top words to be removed. If you want to remove too common words from model, you can set this value to 1 or more. The default value is 0, which means no top words are removed.
+
+        k : int
+            the number of topics between 1 ~ 32767
+
+        t : int
+            the number of timpoints
+
+        alpha_var : float
+            transition variance of alpha (per-document topic distribution)
+
+        eta_var : float
+            variance of eta (topic distribution of each document) from its alpha
+
+        phi_var : float
+            transition variance of phi (word distribution of each topic)
+
+        lr_a : float
+            shape parameter a greater than zero, for SGLD step size calculated as e_i = a * (b + i) ^ (-c)
+
+        lr_b : float
+            shape parameter b greater than or equal to zero, for SGLD step size calculated as e_i = a * (b + i) ^ (-c)
+
+        lr_c : float
+            shape parameter c with range (0.5, 1], for SGLD step size calculated as e_i = a * (b + i) ^ (-c)
+
+        seed : int
+            random seed. default value is a random number from std::random_device{} in C++
+
+        corpus : Corpus
+            a list of documents to be added into the model
+
+        transform : Callable[dict, dict]
+            a callable object to manipulate arbitrary keyword arguments for a specific topic model
+
+        Train Parameters
+
+        iter : int
+            the number of iterations of Gibbs-sampling
+
+        workers : int
+            an integer indicating the number of workers to perform samplings. If workers is 0, the number of cores in the system will be used.
+
+        parallel : Union[int, ParallelScheme]
+            the parallelism scheme for training. the default value is ParallelScheme.DEFAULT which means that tomotopy selects the best scheme by model.
+
+        freeze_topics : bool
+            prevents to create a new topic when training. Only valid for HLDAModel
+
+        callback_interval : int
+            the interval of calling callback function. If callback_interval <= 0, callback function is called at the beginning and the end of training.
+
+        callback : Callable[[LDAModel, int, int], None]
+            a callable object which is called every callback_interval iterations. It receives three arguments: the current model, the current number of iterations, and the total number of iterations.
+
+        show_progress : bool
+            If True, it shows progress bar during training using tqdm package.
+
         """
-        self.num_topics: int = num_topics
-        self.passes: int = passes
-        self.iterations: int = iterations
-        self.alpha: Any = alpha
-        self.eta: Any = eta
-        self.random_state: Optional[int] = random_state
-        self.chunksize: int = chunksize
+        # Store the training parameters
+        self.iter = iter
+        self.freeze_topics = freeze_topics
+        self.workers = workers
+        self.parallel = parallel
+        self.callback_interval = 10
+        self.callback = callback
+        self.show_progress = show_progress
 
-        # Fixed time key as per your requirement
-        self.time_key: str = "PublicationDate"
+        # storing the number of time_points
+        self.t = t
 
-        # Initialize attributes
-        self.dictionary: corpora.Dictionary = corpora.Dictionary()
-        self.corpus: List[List[Tuple[int, int]]] = []
-        self.time_slices: List[int] = []
-        self.model: Optional[LdaSeqModel] = None
-
-        # Store additional parameters internally if needed
-        self.additional_params: Dict[str, Any] = kwargs
+        # Intitialize Model
+        self.model = DTModel(
+            tw=tw,
+            min_cf=min_cf,
+            min_df=min_df,
+            rm_top=rm_top,
+            k=k,
+            t=t,
+            alpha_var=0.1,
+            eta_var=eta_var,
+            phi_var=phi_var,
+            lr_a=lr_a,
+            lr_b=lr_b,
+            lr_c=lr_c,
+            seed=42,
+            corpus=corpus,
+            transform=transform,
+        )
 
     def _parse_publication_date(self, date_str: str) -> Optional[datetime]:
         """
         Parses the PublicationDate string into a datetime object.
         """
+        date_str = date_str[:8]
         for fmt in ("%Y-%b", "%Y"):
             try:
                 return datetime.strptime(date_str, fmt)
@@ -53,209 +295,292 @@ class DynamicTopicModeling:
                 continue
         return None
 
-    def _generate_alpha_vector(self) -> List[float]:
+    def _visualize(
+        self, results: Dict[str, Union[Dict, str, List]]
+    ) -> Dict[str, Union[Dict, str, List]]:
         """
-        Generates an asymmetric alpha vector for the number of topics.
+        Creates Visualizations of the generated results including.
+
+        Topic distributions over time.
+        Normalized Topic distributions over time.
+        Top Topic Words over time.
         """
-        alpha_vector = [0.1] + [0.05] * (self.num_topics - 1)
-        return alpha_vector
+        # Plotting the Topic word counts over time
+        timepoints = results["Timepoints"]
+        counts_per_topic = np.array(results["Counts Per Topic"])
+        # Counts per topic is in form timepoints, topics
+        # we need it in topics, timepoints
+        counts_per_topic = counts_per_topic.T
 
-    def fit(self, documents: List[Dict[str, Any]]) -> None:
-        """
-        Fits the Dynamic Topic Model to the provided documents.
-        """
-        logging.info("Starting the fitting process.")
-        documents_copy: List[Dict[str, Any]] = copy.deepcopy(documents)
+        fig, ax = plt.subplots()
 
-        # Step 1: Extract and group documents by time slices
-        texts_by_time: defaultdict = defaultdict(list)
-        for doc in documents_copy:
-            abstract = doc.get("Abstract Normalized", "")
-            publication_date = doc.get(self.time_key, None)
+        ax.set_title("Topic Word Counts")
+        ax.set_xticks(np.arange(len(timepoints)))
+        ax.set_xticklabels(
+            [
+                " - ".join(
+                    [
+                        str(date.year) + " " + str(date.month)
+                        for date in timepoint
+                    ]
+                )
+                for timepoint in timepoints
+            ],
+            rotation="vertical",
+        )
+        ax.set_xlabel("Time Intervals")
+        ax.set_ylabel("Words Per Topic")
 
-            if publication_date is None:
-                continue  # Skip documents without PublicationDate
+        # Extracting the Topic Names, i.e. the most prominent words of a topic
+        # over all timepoints. This will be given to subsequent LLM Agents to
+        # Better analyze the results.
+        topic_names = {}
+        for k in range(self.model.k):
+            topic_word_distribution = {}
+            for t in range(self.t):
+                topic_words = self.model.get_topic_words(
+                    k, timepoint=t, top_n=10
+                )
+                for word, value in topic_words:
+                    if word in topic_word_distribution.keys():
+                        topic_word_distribution[word] += value
+                    else:
+                        topic_word_distribution[word] = value
 
-            if isinstance(publication_date, str):
-                parsed_date = self._parse_publication_date(publication_date)
-                if parsed_date is None:
-                    continue  # Skip if date parsing fails
-            else:
-                continue  # Skip if PublicationDate is not a string
+            topic_word_distribution = {
+                k: v
+                for k, v in sorted(
+                    topic_word_distribution.items(), key=lambda item: item[1]
+                )
+            }
+            # Get top 10 names
+            names = []
+            for i, topic_name in enumerate(
+                topic_word_distribution.keys(), start=1
+            ):
+                print(names)
+                names.append(topic_name)
+                if i % 10 == 0:
+                    topic_names[k] = names
+                    break
 
-            if isinstance(abstract, list) and all(isinstance(token, str) for token in abstract):
-                if len(abstract) < 3:
-                    continue  # Skip very short abstracts
-                texts_by_time[parsed_date].append(abstract)
-            else:
-                continue  # Skip documents with invalid Abstract Normalized
+        print(topic_names)
 
-        # Step 2: Sort time slices chronologically
-        sorted_times: List[datetime] = sorted(texts_by_time.keys())
-        texts: List[List[str]] = []
-        self.time_slices = []
-        for time in sorted_times:
-            current_texts = texts_by_time[time]
-            texts.extend(current_texts)
-            self.time_slices.append(len(current_texts))
+        # Adding the topic names to the results
+        results[
+            "Topic Names Explanation"
+        ] = """
+Top 10 words for each topic based on the unified distributions of every 
+timepoint for every topic. 
 
-        if not self.time_slices:
-            raise ValueError("No valid documents found after processing.")
+Presented in this form: 
 
-        # Ensure each time slice has enough documents
-        min_docs_per_slice = 5
-        filtered_texts = []
-        filtered_time_slices = []
-        for time, texts_in_time in texts_by_time.items():
-            if len(texts_in_time) >= min_docs_per_slice:
-                filtered_texts.extend(texts_in_time)
-                filtered_time_slices.append(len(texts_in_time))
+<topic_number>: ["<top word>", "<2nd top word>" ...]
 
-        if not filtered_time_slices:
-            raise ValueError("No time slices have the minimum required number of documents.")
-
-        self.time_slices = filtered_time_slices
-        self.dictionary = corpora.Dictionary(filtered_texts)
-        self.corpus = [self.dictionary.doc2bow(text) for text in filtered_texts]
-
-        # Step 5: Prepare the 'alphas' parameter
-        if isinstance(self.alpha, str):
-            if self.alpha.lower() == 'asymmetric':
-                alphas = self._generate_alpha_vector()
-            elif self.alpha.lower() == 'symmetric':
-                alphas = 0.01
-            else:
-                raise ValueError(f"Unsupported alpha value: {self.alpha}")
-        elif isinstance(self.alpha, (list, tuple)):
-            if len(self.alpha) != self.num_topics:
-                raise ValueError(f"Length of alpha vector ({len(self.alpha)}) does not match num_topics ({self.num_topics}).")
-            alphas = self.alpha
-        elif isinstance(self.alpha, (float, int)):
-            alphas = float(self.alpha)
-        else:
-            raise ValueError(f"Unsupported type for alpha: {type(self.alpha)}")
-
-        logging.info("Initializing LdaSeqModel with the following parameters:")
-        logging.info(f"Number of Topics: {self.num_topics}")
-        logging.info(f"Alpha: {alphas}")
-        logging.info(f"Iterations: {self.iterations}")
-        logging.info(f"Chunksize: {self.chunksize}")
-        logging.info(f"Eta: {self.eta}")
-
-        # Step 6: Initialize and train the Dynamic Topic Model
-
-        try:
-            self.model = LdaSeqModel(
-                corpus=self.corpus,
-                id2word=self.dictionary,
-                time_slice=self.time_slices,
-                num_topics=self.num_topics,
-                passes=self.passes,
-                lda_inference_max_iter=self.iterations,
-                alphas=alphas,
-                random_state=self.random_state,
-                chunksize=self.chunksize,
-                initialize='gensim',
+"""
+        results["Topic Names"] = topic_names
+        # Plotting the Topic Wordcounts overtime
+        for topic, timepoint_counts in enumerate(counts_per_topic):
+            ax.plot(
+                np.arange(len(timepoints)),
+                timepoint_counts,
+                label=f"Topic: {topic} {topic_names[topic][:2]}",
             )
 
-            
-            logging.info("LdaSeqModel trained successfully.")
-        except Exception as e:
-            logging.error("An error occurred during LdaSeqModel training.")
-            logging.error(str(e))
-            raise
+        ax.legend()
+        fig.tight_layout()
+        fig.savefig(
+            os.path.join("visualizations", "DynamicTopicWordCounts.png")
+        )
 
-    def get_topics(self, top_n: int = 10) -> List[List[Tuple[str, float]]]:
-        """
-        Retrieves the topics across all time slices.
+        results[
+            "DynamicTopicWordCounts Explanation"
+        ] = """
+        A plot that shows the distribution of words per topic for each timepoint
+        it is based on the data from Counts Per Topic. 
 
-        :param top_n: Number of top words per topic per time slice.
-        :return: A list where each element corresponds to a time slice and contains a list of topics,
-                 each topic being a list of (word, probability) tuples.
-        """
-        if self.model is None:
-            raise ValueError(
-                "Model has not been trained yet. Call the instance with documents first."
+        In the plot each topic is named by a number and the first name from 
+        "Topic Names" so use the number (n_topic starting from zero for the 
+        first topic described in "Topic Names" and so on) or the name to
+        discribe the plot. 
+"""
+        results["DynamicTopicWordCounts"] = "DynamicTopicWordCounts.png"
+
+        # Dynamic Topic Distribution
+
+        time_stamps_word_counts = [
+            np.sum(timestamp_word_counts)
+            for timestamp_word_counts in counts_per_topic.T
+        ]
+
+        topic_distributions = [
+            list(
+                np.array(topic_word_counts) / np.array(time_stamps_word_counts)
+            )
+            for topic_word_counts in counts_per_topic
+        ]
+
+        results[
+            "Topic Distributions Explanation"
+        ] = """
+        A list of values derived from Topic Names transposed. 
+        each timepoint is normalized by the sum of the wordcounts of all topics
+        at this timepoint so it coresponds to the topic distribution at this 
+        timepoint. 
+"""
+        results["Topic Distributions"] = topic_distributions
+
+        fig, ax = plt.subplots()
+
+        ax.set_title("Dynamic Topic Distribution")
+        ax.set_xticks(np.arange(len(timepoints)))
+        ax.set_xticklabels(
+            [
+                " - ".join(
+                    [
+                        str(date.year) + " " + str(date.month)
+                        for date in timepoint
+                    ]
+                )
+                for timepoint in timepoints
+            ],
+            rotation="vertical",
+        )
+        ax.set_xlabel("Time Intervals")
+        ax.set_ylabel("Distribution of Topics")
+
+        for topic, timepoint_counts in enumerate(topic_distributions):
+            ax.plot(
+                np.arange(len(timepoints)),
+                timepoint_counts,
+                label=f"Topic: {topic} {topic_names[topic][:2]}",
             )
 
-        all_topics: List[List[Tuple[str, float]]] = []
-        for t in range(len(self.time_slices)):
-            time_topics: List[Tuple[str, float]] = []
-            for topic_id in range(self.num_topics):
-                topic_terms = self.model.print_topic(topicid=topic_id, time=t, top_n=top_n)
-                # Parse the topic terms into (word, probability) tuples
-                terms = [
-                    (term.split("*")[1].strip('"'), float(term.split("*")[0]))
-                    for term in topic_terms.split(" + ")
-                ]
-                time_topics.append((topic_id, terms))
-            all_topics.append(time_topics)
-        return all_topics
+        ax.legend()
+        fig.tight_layout()
+        fig.savefig(
+            os.path.join("visualizations", "DynamicTopicDistributions.png")
+        )
 
-    def get_document_topics(
-        self, document: Dict[str, Any], top_n: int = 10
-    ) -> List[Tuple[int, float]]:
-        """
-        Gets the topic distribution for a single document.
+        results[
+            "DynamicTopicDistributions Explanation"
+        ] = """
+        A plot that shows the distribution of topics for each timepoint.
+        This plot is based on the data from "Topic Distributions"
 
-        :param document: A dictionary containing at least the keys "Abstract Normalized" and "PublicationDate".
-        :param top_n: Number of top topics to return.
-        :return: List of (topic_id, probability) tuples.
-        """
-        if self.model is None:
-            raise ValueError(
-                "Model has not been trained yet. Call the instance with documents first."
-            )
+        In the plot each topic is named by a number and the first two names 
+        from "Topic Names" so use the number (n_topic starting from zero for
+        the first topic described in "Topic Names" and so on) or the name to
+        discribe the plot. 
+"""
+        results["DynamicTopicWordCounts"] = "DynamicTopicWordCounts.png"
 
-        abstract = document.get("Abstract Normalized", "")
-        publication_date = document.get(self.time_key, None)
+        # Top Words over time
 
-        if publication_date is None:
-            raise ValueError(
-                f"Document is missing the time key '{self.time_key}'."
-            )
-
-        if isinstance(publication_date, str):
-            parsed_date = self._parse_publication_date(publication_date)
-            if parsed_date is None:
-                raise ValueError("PublicationDate format is invalid.")
-        else:
-            raise ValueError("PublicationDate must be a string.")
-
-        if isinstance(abstract, list) and all(isinstance(token, str) for token in abstract):
-            tokens = abstract
-        else:
-            raise ValueError(
-                "The 'Abstract Normalized' field must be a list of strings."
-            )
-
-        bow = self.dictionary.doc2bow(tokens)
-        # Infer topic distribution for the document
-        topic_dist = self.model.inference([bow])[0]
-        # Flatten the list and sort
-        topic_probs = sorted(topic_dist, key=lambda x: x[1], reverse=True)[:top_n]
-        return topic_probs
+        # return results
 
     def __call__(self, documents: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
-        Makes the DynamicTopicModeling instance callable. Performs dynamic topic modeling on the provided documents.
+        Makes the DynamicTopicModeling instance callable.
+        Performs dynamic topic modeling on the provided documents.
 
         :param documents: List of document dictionaries.
         :return: Dictionary containing model results.
         """
-        self.fit(documents)
-        topics = self.get_topics(top_n=10)
-        result: Dict[str, Any] = {
-            "num_topics": self.num_topics,
-            "time_slices": self.time_slices,
-            "topics": topics,
-            "alpha": self.alpha,
-            "random_state": self.random_state,
-            "chunksize": self.chunksize,
-            "passes": self.passes,
-            "iterations": self.iterations,
-            "model": self.model,
-            "dictionary": self.dictionary,
-            "corpus": self.corpus,
+        # Always deepcopy documents at strart of algorithm call to pervent
+        # documents from changing
+        documents = copy.deepcopy(documents)
+        # Converting the time-stamp strings into python time-stamps
+        publication_dates = []
+        documents_preprocessed = []
+        for document in documents:
+            publication_date_parsed = self._parse_publication_date(
+                document["PublicationDate"]
+            )
+            if publication_date_parsed is not None:
+                document["PublicationDate"] = publication_date_parsed
+                documents_preprocessed.append(document)
+                publication_dates.append(publication_date_parsed)
+
+        # Generating date-ranges corresponding to timepoints
+
+        min_date, max_date = (min(publication_dates), max(publication_dates))
+
+        days_step = ((max_date - min_date).days + 1) / self.t
+        time_step = timedelta(days=days_step)
+
+        intervals = [
+            [min_date + time_step * i, min_date + time_step * (i + 1)]
+            for i in range(self.t)
+        ]
+
+        # Assigning timempoints to the documents
+        for i, document in enumerate(documents_preprocessed):
+            for timepoint, (low, high) in enumerate(intervals):
+                # print(time_point, low, high, low < document["PublicationDate"] < high)
+                if low <= document["PublicationDate"] < high:
+                    document["Timepoint"] = timepoint
+
+        for i, document in enumerate(documents_preprocessed):
+            if "Timepoint" not in document.keys():
+                print(i, document.keys())
+            pass
+        # Adding the documents to the model
+        for document in documents_preprocessed:
+            self.model.add_doc(
+                words=document["AbstractNormalized"],
+                timepoint=document["Timepoint"],
+            )
+
+        # Running the algorithm
+        self.model.train(
+            iter=self.iter,
+            workers=self.workers,
+            parallel=self.parallel,
+            freeze_topics=self.freeze_topics,
+            # callback_interval=self.callback_interval,
+            # callback=self.callback,
+            show_progress=self.show_progress,
+        )
+
+        # Gathering the results
+        results = {
+            "Timepoints Explanation": """
+The time intervals which were analyzed in this DynamicTopicModeling. In all 
+results everytime a time point is mentioned these date-intervals are meant. 
+""",
+            "Timepoints": intervals,
+            "Documents Analyzed": len(documents_preprocessed),
+            "Documents discarded because publication date could not be parsed": len(
+                documents
+            )
+            - len(documents_preprocessed),
+            "Topic Words Explanation": """
+Topic Word distribution for every topic and every timestamp.
+It is presented in form of a dictionary with items:
+    topic<k>_timestamp<t>: [(<word>, probability)...]
+            """,
+            "Topic Words": {},
+            "Counts Per Topic Explanation": """
+The number of words allocated to each timepoint and topic in the shape 
+([num_timepoints, num_topics]...)
+            """,
+            "Counts Per Topic": self.model.get_count_by_topics(),
         }
-        return result
+
+        for k in range(self.model.k):
+            for t in range(self.t):
+                topic_words = self.model.get_topic_words(
+                    k, timepoint=t, top_n=10
+                )
+                results["Topic Words"][
+                    "topic{}_timepoint{}".format(k, t)
+                ] = topic_words
+
+        results = self._visualize(results)
+
+        return results
+
+
+if __name__ == "__main__":
+    pass
