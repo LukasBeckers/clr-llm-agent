@@ -1,141 +1,211 @@
-import gensim
-from gensim import corpora
-from gensim.models import LdaModel
-from typing import List, Dict, Any, Tuple, Optional
+from algorithms.IAlgorithm import IAlgorithm
+from tomotopy import LDAModel, TermWeight, ParallelScheme
+from typing import Dict, List, Optional, Any, Union, Iterable, Callable, Tuple
+from kneed import KneeLocator
 import copy
+import os
+import matplotlib.pyplot as plt
 
 
-class LatentDirichletAllocation:
+class LatentDirichletAllocation(IAlgorithm):
+    algorithm_description = ""
+
     def __init__(
         self,
-        num_topics: int = 10,
-        passes: int = 1,
-        iterations: int = 50,
-        alpha: Any = "symmetric",
-        beta: Any = "auto",
-        random_state: Optional[int] = None,
-        chunksize: int = 1000,
+        # Model Parameters
+        tw: Union[int, TermWeight] = TermWeight.ONE,
+        min_cf: int = 0,
+        min_df: int = 0,
+        rm_top: int = 0,
+        k: int = None,
+        alpha: Union[float, Iterable[float]] = 0.1,
+        eta: float = 0.01,
+        seed: int = 42,
+        transform: Optional[Callable] = None,
+        # Training Parameters
+        iter: int = 5000,
+        workers: int = 10,
+        parallel=ParallelScheme.DEFAULT,
+        freeze_topics: bool = False,
+        callback_interval: int = 10,
+        callback: Optional[Callable] = None,
+        show_progress: bool = False,
     ) -> None:
         """
-        Initializes the LDA model with specified hyperparameters.
+        LDA Algorithm, the base topic modeling algorithm on which most other
+        tm algorithms are based.
 
-        :param num_topics: The number of topics to extract.
-        :param passes: Number of passes through the corpus during training.
-        :param iterations: Maximum number of iterations through the corpus when inferring the topic distribution.
-        :param alpha: Hyperparameter that affects the sparsity of the document-topic distribution.
-                      Can be 'symmetric', 'asymmetric', or a list of values.
-        :param beta: Hyperparameter that affects the sparsity of the topic-word distribution.
-                     Can be 'auto', 'symmetric', or a float value.
-        :param random_state: Seed for random number generator for reproducibility.
-        :param chunksize: Number of documents to be used in each training chunk.
+        tomotopy LDA Model initialization parameters:
+
+        tw : Union[int, TermWeight]
+            term weighting scheme in TermWeight. The default value is
+            TermWeight.ONE
+        min_cf : int
+            minimum collection frequency of words. Words with a smaller collection frequency than min_cf are excluded from the model. The default value is 0, which means no words are excluded.
+        min_df : int
+            minimum document frequency of words. Words with a smaller document frequency than min_df are excluded from the model. The default value is 0, which means no words are excluded
+        rm_top : int
+            the number of top words to be removed. If you want to remove too common words from model, you can set this value to 1 or more. The default value is 0, which means no top words are removed.
+        k : Optional(int)
+            the number of topics between 1 ~ 32767
+            if k == None topic models from 0 to 100 will be calculated and the
+            optimal number of topics will be found by searching the knee of the
+            perplexity number of topics curve.
+        alpha : Union[float, Iterable[float]]
+            hyperparameter of Dirichlet distribution for document-topic, given as a single float in case of symmetric prior and as a list with length k of float in case of asymmetric prior.
+        eta : float
+            hyperparameter of Dirichlet distribution for topic-word
+        seed : int
+            random seed. The default value is a random number from std::random_device{} in C++
+        transform : Callable[dict, dict]
+            a callable object to manipulate arbitrary keyword arguments for a specific topic model
+
+        Training Parameters
+        iter : int
+            the number of iterations of Gibbs-sampling
+        workers : int
+            an integer indicating the number of workers to perform samplings. If workers is 0, the number of cores in the system will be used.
+        parallel : Union[int, ParallelScheme]
+            the parallelism scheme for training. the default value is ParallelScheme.DEFAULT which means that tomotopy selects the best scheme by model.
+        freeze_topics : bool
+            prevents to create a new topic when training. Only valid for HLDAModel
+        callback_interval : int
+            the intderval of calling callback function. If callback_interval <= 0, callback function is called at the beginning and the end of training.
+        callback : Callable[[LDAModel, int, int], None]
+            a callable object which is called every callback_interval iterations. It receives three arguments: the current model, the current number of iterations, and the total number of iterations.
+        show_progress : bool
+            If True, it shows progress bar during training using tqdm package.
+
         """
-        self.num_topics: int = num_topics
-        self.passes: int = passes
-        self.iterations: int = iterations
-        self.alpha: Any = alpha
-        self.beta: Any = beta
-        self.random_state: Optional[int] = random_state
-        self.chunksize: int = chunksize
+        # Setting the model Parameters
+        self.tw = tw
+        self.min_cf = min_cf
+        self.min_df = min_df
+        self.rm_top = rm_top
+        self.k = k
+        self.alpha = alpha
+        self.eta = eta
+        self.seed = 42
+        self.transform = transform
 
-        self.dictionary: Optional[corpora.Dictionary] = None
-        self.corpus: Optional[List[List[Tuple[int, int]]]] = None
-        self.model: Optional[LdaModel] = None
+        # Setting the training parameters
+        self.iter = iter
+        self.workers = workers
+        self.parallel = parallel
+        self.freeze_topics = freeze_topics
+        self.callback_interval = callback_interval
+        self.callback = callback
+        self.show_progress = show_progress
 
-    def __call__(
-        self,
-        documents: List[Dict[str, Any]],
-    ) -> Dict[str, Any]:
+    def _visualize(self, results):
+        pass
+
+    def _find_k(self, documents: List[Dict[str, Any]]) -> Tuple[int, LDAModel]:
         """
-        Performs LDA topic modeling on the provided documents.
-
-        :param documents: List of dictionaries, each containing at least the key "Abstract Normalized".
-        :return: Dictionary containing the trained model, dictionary, corpus, and topics.
+        Trains models with 2-5 topics and identifies the best fit via knee
+        of the perplexity curve.
         """
-        # Create a deep copy to ensure original documents are not modified
-        documents_copy: List[Dict[str, Any]] = copy.deepcopy(documents)
 
-        # Step 1: Extract and tokenize the "Abstract Normalized" text
-        abstracts: List[List[str]] = []
-        for doc in documents_copy:
-            abstract_normalized = doc.get("Abstract Normalized")
-            if not isinstance(abstract_normalized, list) or not all(
-                isinstance(token, str) for token in abstract_normalized
-            ):
-                raise ValueError(
-                    "Each document must contain an 'Abstract Normalized' field as a list of strings."
-                )
-            abstracts.append(abstract_normalized)
+        test_k = [x for x in range(2, 15)]
+        perplexities = []
+        models = []
+        print("is updated")
+        for k in test_k:
+            model = LDAModel(
+                tw=self.tw,
+                min_cf=self.min_cf,
+                min_df=self.min_df,
+                rm_top=self.rm_top,
+                k=k,
+                alpha=self.alpha,
+                eta=self.eta,
+                #seed=self.seed,
+                transform=self.transform,
+            )
+            for document in documents:
+                words = document["AbstractNormalized"]
+                model.add_doc(words)
 
-        # Step 2: Create a dictionary and filter out extremes to limit the number of features
-        self.dictionary = corpora.Dictionary(abstracts)
-        # Optionally, you can add dictionary filtering here if needed
-        # For example:
-        # self.dictionary.filter_extremes(no_below=5, no_above=0.5)
-
-        # Step 3: Convert documents to Bag-of-Words format
-        self.corpus = [self.dictionary.doc2bow(text) for text in abstracts]
-
-        # Step 4: Initialize and train the LDA model
-        self.model = LdaModel(
-            corpus=self.corpus,
-            id2word=self.dictionary,
-            num_topics=self.num_topics,
-            passes=self.passes,
-            iterations=self.iterations,
-            alpha=self.alpha,
-            eta=self.beta,
-            random_state=self.random_state,
-            chunksize=self.chunksize,
-            update_every=1,
-            per_word_topics=True,
-        )
-
-        # Step 5: Retrieve topics
-        topics: List[str] = self.model.print_topics(
-            num_topics=self.num_topics, num_words=10
-        )
-
-        result: Dict[str, Any] = {
-            "num_topics": self.num_topics,
-            "passes": self.passes,
-            "iterations": self.iterations,
-            "alpha": self.alpha,
-            "beta": self.beta,
-            "random_state": self.random_state,
-            "chunksize": self.chunksize,
-            "topics": topics,
-            "model": self.model,
-            "dictionary": self.dictionary,
-            "corpus": self.corpus,
-        }
-
-        return result
-
-    def get_document_topics(
-        self, document: List[str], top_n: int = 10
-    ) -> List[Tuple[int, float]]:
-        """
-        Gets the topic distribution for a single document.
-
-        :param document: Preprocessed document (list of tokens).
-        :param top_n: Number of top topics to return.
-        :return: List of (topic_id, probability) tuples.
-        """
-        if self.model is None or self.dictionary is None:
-            raise ValueError(
-                "Model has not been trained yet. Call the instance with documents first."
+            model.train(
+                iter=self.iter,
+                workers=self.workers,
+                parallel=self.parallel,
+                freeze_topics=self.freeze_topics,
+                show_progress=self.show_progress,
             )
 
-        if not isinstance(document, list) or not all(
-            isinstance(token, str) for token in document
-        ):
-            raise ValueError("The document must be a list of strings.")
+            print(k, "Perplexity", model.perplexity)
+            perplexities.append(model.perplexity)
+            models.append(model)
 
-        bow = self.dictionary.doc2bow(document)
-        topic_distribution = self.model.get_document_topics(
-            bow, minimum_probability=0
+        best_k = KneeLocator(
+            test_k, perplexities, curve="convex", direction="decreasing"
+        ).knee
+
+        # Plotting the Perplexity
+        fig, ax = plt.subplots()
+
+        ax.set_title("Perplexity Per Number of Topics")
+        ax.set_xticks([x for x in test_k[::10]])
+        ax.set_xticklabels([x for x in test_k[::10]])
+        ax.set_xlabel("Number of Topics")
+        ax.set_ylabel("Perplexity")
+
+        ax.plot(test_k, perplexities)
+
+        # Adding a Marker for the Knee
+        ax.plot(
+            test_k[best_k : best_k + 1],
+            perplexities[best_k : best_k + 1],
+            marker="o",
+            color="red",
         )
-        top_topics = sorted(
-            topic_distribution, key=lambda x: x[1], reverse=True
-        )[:top_n]
-        return top_topics
+
+        fig.savefig(
+            os.path.join("visualizations", "PerplexityPerNumberOfTopics.png")
+        )
+
+        return best_k, models[best_k]
+
+    def __call__(
+        self, documents: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+
+        # Making a deep copy of documents, so that the original documents will
+        # not be changed in this algorithm.
+
+        documents = copy.deepcopy(documents)
+        # remove all documents that have no key Abstarct Normalized
+        documents = [
+            document
+            for document in documents
+            if "AbstractNormalized" in document.keys()
+        ]
+        # Performing the Analysis
+        if self.k is None:
+            # Searching for the optimal value of k if k=None
+            k, model = self._find_k(documents)
+        else:
+            # Performing the normal LDA if k is not None
+            model = LDAModel(
+                tw=self.tw,
+                min_cf=self.min_cf,
+                min_df=self.min_df,
+                rm_top=self.rm_top,
+                k=self.k,
+                alpha=self.alpha,
+                eta=self.eta,
+                seed=self.seed,
+                transform=self.transform,
+            )
+            for document in documents:
+                words = document["AbstactNormalized"]
+                model.add_doc(words)
+
+            model.train(
+                iter=self.iter,
+                workers=self.workers,
+                parallel=self.parallel,
+                freeze_topics=self.freeze_topics,
+                show_progress=self.show_progress,
+            )
