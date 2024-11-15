@@ -1,3 +1,4 @@
+from algorithms.IAlgorithm import IAlgorithm
 from tomotopy import DTModel, TermWeight, ParallelScheme
 from tomotopy.utils import Corpus
 from typing import List, Dict, Any, Tuple, Optional, Union, Callable
@@ -10,7 +11,7 @@ import pandas as pd
 import os
 
 
-class DynamicTopicModeling:
+class DynamicTopicModeling(IAlgorithm):
     algorithm_description = """
 
 This text should help you in two cases: 
