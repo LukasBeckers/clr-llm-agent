@@ -23,3 +23,8 @@ end_time = time.time() - start_time
 
 print("Algorithm Run took: ", end_time, "s ")
 print("Results", results)
+print(len(results["Topic Words"]))
+
+for x in results["Topic Words"].values():
+    print(len(x))
+    print(x)

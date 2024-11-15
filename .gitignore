@@ -9,3 +9,4 @@ temp/
 !temp/.gitkeep
 visualizations/
 !visualizations/.gitkeep
+topicmodeling_fuer_lena.ipynb

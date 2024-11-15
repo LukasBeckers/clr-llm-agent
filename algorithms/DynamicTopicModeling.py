@@ -6,6 +6,7 @@ import copy
 from datetime import datetime, timedelta
 from matplotlib import pyplot as plt
 import numpy as np
+import pandas as pd
 import os
 
 
@@ -157,8 +158,8 @@ Description:
         min_cf: int = 0,
         min_df: int = 0,
         rm_top: int = 0,
-        k: int = 5,
-        t: int = 20,
+        k: int = 10,
+        t: int = 10,
         alpha_var: float = 0.1,
         eta_var: float = 0.1,
         phi_var: float = 0.1,
@@ -350,7 +351,9 @@ Description:
             topic_word_distribution = {
                 k: v
                 for k, v in sorted(
-                    topic_word_distribution.items(), key=lambda item: item[1]
+                    topic_word_distribution.items(),
+                    key=lambda item: item[1],
+                    reverse=True,
                 )
             }
             # Get top 10 names
@@ -358,13 +361,10 @@ Description:
             for i, topic_name in enumerate(
                 topic_word_distribution.keys(), start=1
             ):
-                print(names)
                 names.append(topic_name)
                 if i % 10 == 0:
                     topic_names[k] = names
                     break
-
-        print(topic_names)
 
         # Adding the topic names to the results
         results[
@@ -477,7 +477,88 @@ Presented in this form:
 
         # Top Words over time
 
-        # return results
+        top10_topic_names_overtime = {}
+        for k in range(self.model.k):
+            top10_topic_names_overtime[f"Topic {k}"] = []
+            for t in range(self.t):
+                topic_words = self.model.get_topic_words(
+                    k, timepoint=t, top_n=10
+                )
+                topic_words = [
+                    word
+                    for word, value in sorted(
+                        topic_words, key=lambda x: x[1], reverse=True
+                    )
+                ]
+                top10_topic_names_overtime[f"Topic {k}"].append(
+                    topic_words[:10]
+                )
+
+        topics = sorted(top10_topic_names_overtime.keys())
+        num_timepoints = self.t
+
+        cell_text = []
+        for topic in topics:
+            row = []
+            for t in range(num_timepoints):
+                top_words = top10_topic_names_overtime[topic][t][:1]
+                words_str = ", ".join(top_words)
+                row.append(words_str)
+            cell_text.append(row)
+
+        fig, ax = plt.subplots(figsize=(12, len(topics) * 0.5))
+
+        ax.xaxis.set_visible(False)
+        ax.yaxis.set_visible(False)
+        ax.axis("off")
+
+        table = ax.table(
+            cellText=cell_text,
+            rowLabels=topics,
+            colLabels=[f"Timepoint {t+1}" for t in range(num_timepoints)],
+            loc="center",
+            cellLoc="center",
+            rowLoc="center",
+        )
+
+        table.auto_set_font_size(False)
+        table.set_fontsize(10)
+        table.scale(
+            1, 1.5
+        )  # You may need to adjust scaling based on your data
+
+        plt.tight_layout()
+        fig.savefig(os.path.join("visualizations", "TopicWordsOverTime.png"))
+        data = {}
+        for t in range(num_timepoints):
+            column_data = []
+            for topic in topics:
+                top_words = top10_topic_names_overtime[topic][
+                    t
+                ]  # Get all top words
+                words_str = ", ".join(top_words)
+                column_data.append(words_str)
+            data[f"Timepoint {t+1}"] = column_data
+
+        # Create the DataFrame
+        df = pd.DataFrame(data, index=topics)
+
+        # Save DataFrame to Excel
+        df.to_excel(
+            os.path.join("visualizations", "topic_words_over_time.xlsx")
+        )
+
+        results[
+            "Topic Words Over Time Explanation"
+        ] = """
+        This is a table plot of the "Topic Words" data. it shows for each 
+        timepoint the top word for each topic. 
+"""
+        results["Topic Words Over Time Explanation"] = (
+            "topic_words_over_time.xlsx"
+        )
+
+        return results
 
     def __call__(self, documents: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
@@ -525,12 +606,17 @@ Presented in this form:
             if "Timepoint" not in document.keys():
                 print(i, document.keys())
             pass
+
         # Adding the documents to the model
         for document in documents_preprocessed:
             self.model.add_doc(
                 words=document["AbstractNormalized"],
                 timepoint=document["Timepoint"],
             )
+
+        # Adding at least one document per timeslot to have no empty timepoints
+        for timepoint in range(self.t):
+            self.model.add_doc(words=[" "], timepoint=timepoint)
 
         # Running the algorithm
         self.model.train(

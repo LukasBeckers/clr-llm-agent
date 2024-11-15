@@ -53,10 +53,11 @@ if __name__ == "__main__":
 
     # Downloading the datasets from the datasources
     data_loader = DataLoader(email=email)
-    # data_set = data_loader(search_strings=search_strings[:])
+    #data_set = data_loader(search_strings=search_strings[:])
+    data_set = data_loader(search_strings=[("Glymph* OR Brain_Clearance", "pub_med")])
 
-    # with open(os.path.join("temp", "dataset"), "wb") as f:
-    #     pk.dump(data_set, f)
+    with open(os.path.join("temp", "dataset"), "wb") as f:
+        pk.dump(data_set, f)
 
     with open(os.path.join("temp", "dataset"), "rb") as f:
         dataset = pk.load(f)
