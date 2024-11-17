@@ -75,6 +75,7 @@ if __name__ == "__main__":
             data_point["AbstractNormalized"] = text_normalizer(
                 data_point["Abstract"]
             )
+        # Removint datapoints that have no abstract
         except KeyError:
             dataset.remove(data_point)
 

@@ -18,7 +18,7 @@ for data_point in dataset[:]:
         except KeyError:
             dataset.remove(data_point)
 
-algo = LatentDirichletAllocation(k=None)
+algo = LatentDirichletAllocation(k=6)
 
 start_time = time.time()
 results = algo(dataset)
