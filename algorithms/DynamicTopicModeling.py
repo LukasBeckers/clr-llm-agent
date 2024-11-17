@@ -663,7 +663,8 @@ The number of words allocated to each timepoint and topic in the shape
                 results["Topic Words"][
                     "topic{}_timepoint{}".format(k, t)
                 ] = topic_words
-
+        
+        # Adding the visualizations
         results = self._visualize(results)
 
         return results
