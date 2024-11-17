@@ -38,40 +38,64 @@ Replace "value" with your suggested values for each hyperparameter.
 <STOP_HYPERPARAMETERS>
 """,
 
-    "DynamicTopicModeling":"""
+    "DynamicTopicModeling": """
 You are an expert in configuring machine learning models. Your task is to suggest optimal hyperparameters for the DynamicTopicModeling algorithm based on the provided research question, its classification, and the dataset analysis.
 
 The DynamicTopicModeling has the following hyperparameters:
-- **num_topics** (int): Number of topics to extract. Possible values: 5 to 50.
-- **passes** (int): Number of passes through the corpus during training. Possible values: 1 to 10.
-- **iterations** (int): Maximum number of iterations during training. Possible values: 100 to 1000.
-- **alpha** (str): Controls sparsity of document-topic distribution. Possible values: "symmetric", "asymmetric".
-- **random_state** (int): Seed for reproducibility. Any integer value.
-- **chunksize** (int): Number of documents per training chunk. Possible values: 50 to 5000.
+
+- **k** (int): Number of topics to extract. Possible values: 1 to 32767.
+- **t** (int): Number of timepoints. Depends on the dataset's temporal granularity.
+- **alpha_var** (float): Transition variance of alpha (per-document topic distribution). Possible values: 0.01 to 1.0.
+- **eta_var** (float): Variance of eta (topic distribution of each document) from its alpha. Possible values: 0.01 to 1.0.
+- **phi_var** (float): Transition variance of phi (word distribution of each topic). Possible values: 0.01 to 1.0.
+- **lr_a** (float): Shape parameter 'a' for SGLD step size. Must be greater than 0.
+- **lr_b** (float): Shape parameter 'b' for SGLD step size. Must be greater than or equal to 0.
+- **lr_c** (float): Shape parameter 'c' for SGLD step size. Range: (0.5, 1].
+- **iter** (int): Number of iterations of Gibbs-sampling. Possible values: 1000 to 10000.
+- **seed** (int): Seed for reproducibility. Any integer value.
+- **tw** (str): Term weighting scheme. Possible values: "one", "idf", "pmi", "dbi".
+- **min_cf** (int): Minimum collection frequency of words. Possible values: 0 to 10.
+- **min_df** (int): Minimum document frequency of words. Possible values: 0 to 10.
+- **rm_top** (int): Number of top words to remove. Possible values: 0 to 50.
 
 Each hyperparameter influences the model as follows:
-- **num_topics**: Determines the granularity of topic extraction.
-- **passes**: Affects how thoroughly the model learns from the corpus.
-- **iterations**: Determines the depth of training iterations.
-- **alpha**: Controls the sparsity of the document-topic distribution.
-- **random_state**: Ensures reproducibility of results.
-- **chunksize**: Manages memory usage and training speed.
+
+- **k**: Determines the granularity of topic extraction.
+- **t**: Defines the number of timepoints in the data.
+- **alpha_var**: Controls how much the per-document topic distribution can change over time.
+- **eta_var**: Controls the variance of topic distributions from alpha.
+- **phi_var**: Controls how much the word distribution of each topic can change over time.
+- **lr_a**, **lr_b**, **lr_c**: Parameters for SGLD step size, affecting convergence speed and stability.
+- **iter**: Determines the number of sampling iterations, affecting convergence.
+- **seed**: Ensures reproducibility of results.
+- **tw**: Affects the term weighting scheme used in the model.
+- **min_cf**: Excludes words with low collection frequency, reducing noise.
+- **min_df**: Excludes words appearing in few documents, reducing noise.
+- **rm_top**: Removes too common words from the model.
 
 Please analyze the research question, its classification, and the dataset characteristics to suggest appropriate values for these hyperparameters.
 
 Your response should output only the JSON content between <START_HYPERPARAMETERS> and <STOP_HYPERPARAMETERS>, without any code blocks or additional formatting. Do not include any explanations or descriptions. Here is the exact format you should use:
 
-Replace "value" with your suggested values for each hyperparameter.
+Replace `"value"` with your suggested values for each hyperparameter.
 
 <START_HYPERPARAMETERS>
 {
     "hyper_parameters": {
-        "num_topics": value,
-        "passes": value,
-        "iterations": value,
-        "alpha": "value",
-        "random_state": value,
-        "chunksize": value
+        "k": value,
+        "t": value,
+        "alpha_var": value,
+        "eta_var": value,
+        "phi_var": value,
+        "lr_a": value,
+        "lr_b": value,
+        "lr_c": value,
+        "iter": value,
+        "seed": value,
+        "tw": "value",
+        "min_cf": value,
+        "min_df": value,
+        "rm_top": value
     }
 }
 <STOP_HYPERPARAMETERS>
@@ -105,48 +129,56 @@ Replace "value" with your suggested values for each hyperparameter.
 <STOP_HYPERPARAMETERS>
 """,
 
-    "LatentDirichletAllocation": """
+   "LatentDirichletAllocation": """
 You are an expert in configuring machine learning models. Your task is to suggest optimal hyperparameters for the LatentDirichletAllocation (LDA) algorithm based on the provided research question, its classification, and the dataset analysis.
 
 The LatentDirichletAllocation has the following hyperparameters:
-- **num_topics** (int): The number of topics to extract. Possible values: 5 to 50.
-- **passes** (int): Number of passes through the corpus during training. Possible values: 1 to 10.
-- **iterations** (int): Maximum number of iterations during training. Possible values: 50 to 500.
-- **alpha** (str): Controls the sparsity of the document-topic distribution. Possible values: "symmetric", "asymmetric".
-- **beta** (str): Controls the sparsity of the topic-word distribution. Possible values: "auto", "fixed".
-- **random_state** (int): Seed for reproducibility. Any integer value.
-- **chunksize** (int): Number of documents per training chunk. Possible values: 500 to 2000.
+
+- **k** (int): Number of topics to extract. Possible values: 1 to 32767.
+- **alpha** (float or list of floats): Hyperparameter of Dirichlet distribution for document-topic distribution. If float, symmetric prior; if list, asymmetric prior with length k.
+- **eta** (float): Hyperparameter of Dirichlet distribution for topic-word distribution. Possible values: 0.001 to 0.1.
+- **iter** (int): Number of iterations of Gibbs-sampling. Possible values: 1000 to 10000.
+- **seed** (int): Seed for reproducibility. Any integer value.
+- **tw** (str): Term weighting scheme. Possible values: "one", "idf", "pmi", "dbi".
+- **min_cf** (int): Minimum collection frequency of words. Possible values: 0 to 10.
+- **min_df** (int): Minimum document frequency of words. Possible values: 0 to 10.
+- **rm_top** (int): Number of top words to remove. Possible values: 0 to 50.
 
 Each hyperparameter influences the model as follows:
-- **num_topics**: Determines the granularity of topic extraction.
-- **passes**: Affects how thoroughly the model learns from the corpus.
-- **iterations**: Determines the depth of training iterations.
+
+- **k**: Determines the granularity of topic extraction.
 - **alpha**: Controls the sparsity of the document-topic distribution.
-- **beta**: Controls the sparsity of the topic-word distribution.
-- **random_state**: Ensures reproducibility of results.
-- **chunksize**: Manages memory usage and training speed.
+- **eta**: Controls the sparsity of the topic-word distribution.
+- **iter**: Determines the number of sampling iterations, affecting convergence.
+- **seed**: Ensures reproducibility of results.
+- **tw**: Affects the term weighting scheme used in the model.
+- **min_cf**: Excludes words with low collection frequency, reducing noise.
+- **min_df**: Excludes words appearing in few documents, reducing noise.
+- **rm_top**: Removes too common words from the model.
 
 Please analyze the research question, its classification, and the dataset characteristics to suggest appropriate values for these hyperparameters.
 
 Your response should output only the JSON content between <START_HYPERPARAMETERS> and <STOP_HYPERPARAMETERS>, without any code blocks or additional formatting. Do not include any explanations or descriptions. Here is the exact format you should use:
 
-Replace "value" with your suggested values for each hyperparameter.
+Replace `"value"` with your suggested values for each hyperparameter.
 
 <START_HYPERPARAMETERS>
 {
     "hyper_parameters": {
-        "num_topics": value,
-        "passes": value,
-        "iterations": value,
-        "alpha": "value",
-        "beta": "value",
-        "random_state": value,
-        "chunksize": value
+        "k": value,
+        "alpha": value,
+        "eta": value,
+        "iter": value,
+        "seed": value,
+        "tw": "value",
+        "min_cf": value,
+        "min_df": value,
+        "rm_top": value
     }
 }
 <STOP_HYPERPARAMETERS>
-
-""",
+"""
+,
 
     "LatentSemanticIndexing": """
 You are an expert in configuring machine learning models. Your task is to suggest optimal hyperparameters for the LatentSemanticIndexing (LSI) algorithm based on the provided research question, its classification, and the dataset analysis.
