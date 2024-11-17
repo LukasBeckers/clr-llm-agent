@@ -77,12 +77,8 @@ class HyperParameterGuessor(ReasoningTextGenerator):
         # Generate hyperparameters and reasoning steps
         hyperparameters_raw, reasoning_steps = self.generate(input_text)
 
-        print("Hyperparameters_raw", hyperparameters_raw)
-
         # Convert the JSON output to a dictionary
         hyperparameters_dict = json_to_dict(hyperparameters_raw)
-
-        print("Hyperparameters_dict", hyperparameters_dict)
 
         if hyperparameters_dict is None:
             raise ValueError("Failed to parse hyperparameters JSON.")
