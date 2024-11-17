@@ -22,6 +22,8 @@ Please analyze the research question, its classification, and the dataset charac
 
 Your response should output only the JSON content between <START_HYPERPARAMETERS> and <STOP_HYPERPARAMETERS>, without any code blocks or additional formatting. Do not include any explanations or descriptions. Here is the exact format you should use:
 
+Replace "value" with your suggested values for each hyperparameter.
+
 <START_HYPERPARAMETERS>
 {
     "hyper_parameters": {
@@ -34,16 +36,6 @@ Your response should output only the JSON content between <START_HYPERPARAMETERS
     }
 }
 <STOP_HYPERPARAMETERS>
-
-Replace "value" with your suggested values for each hyperparameter.
-
----
-
-Research Question: "{research_question}"
-Research Question Classification: {research_question_class}
-Dataset Basic Evaluation: {basic_dataset_evaluation}
-
----
 """,
 
     "DynamicTopicModeling":"""
@@ -69,6 +61,8 @@ Please analyze the research question, its classification, and the dataset charac
 
 Your response should output only the JSON content between <START_HYPERPARAMETERS> and <STOP_HYPERPARAMETERS>, without any code blocks or additional formatting. Do not include any explanations or descriptions. Here is the exact format you should use:
 
+Replace "value" with your suggested values for each hyperparameter.
+
 <START_HYPERPARAMETERS>
 {
     "hyper_parameters": {
@@ -81,16 +75,6 @@ Your response should output only the JSON content between <START_HYPERPARAMETERS
     }
 }
 <STOP_HYPERPARAMETERS>
-
-Replace "value" with your suggested values for each hyperparameter.
-
----
-
-Research Question: "{research_question}"
-Research Question Classification: {research_question_class}
-Dataset Basic Evaluation: {basic_dataset_evaluation}
-
----
 """
 ,
 
@@ -109,6 +93,8 @@ Please analyze the research question, its classification, and the dataset charac
 
 Your response should output only the JSON content between <START_HYPERPARAMETERS> and <STOP_HYPERPARAMETERS>, without any code blocks or additional formatting. Do not include any explanations or descriptions. Here is the exact format you should use:
 
+Replace "value" with your suggested values for each hyperparameter.
+
 <START_HYPERPARAMETERS>
 {
     "hyper_parameters": {
@@ -117,16 +103,6 @@ Your response should output only the JSON content between <START_HYPERPARAMETERS
     }
 }
 <STOP_HYPERPARAMETERS>
-
-Replace "value" with your suggested values for each hyperparameter.
-
----
-
-Research Question: "{research_question}"
-Research Question Classification: {research_question_class}
-Dataset Basic Evaluation: {basic_dataset_evaluation}
-
----
 """,
 
     "LatentDirichletAllocation": """
@@ -154,6 +130,8 @@ Please analyze the research question, its classification, and the dataset charac
 
 Your response should output only the JSON content between <START_HYPERPARAMETERS> and <STOP_HYPERPARAMETERS>, without any code blocks or additional formatting. Do not include any explanations or descriptions. Here is the exact format you should use:
 
+Replace "value" with your suggested values for each hyperparameter.
+
 <START_HYPERPARAMETERS>
 {
     "hyper_parameters": {
@@ -168,15 +146,6 @@ Your response should output only the JSON content between <START_HYPERPARAMETERS
 }
 <STOP_HYPERPARAMETERS>
 
-Replace "value" with your suggested values for each hyperparameter.
-
----
-
-Research Question: "{research_question}"
-Research Question Classification: {research_question_class}
-Dataset Basic Evaluation: {basic_dataset_evaluation}
-
----
 """,
 
     "LatentSemanticIndexing": """
@@ -198,6 +167,8 @@ Please analyze the research question, its classification, and the dataset charac
 
 Your response should output only the JSON content between <START_HYPERPARAMETERS> and <STOP_HYPERPARAMETERS>, without any code blocks or additional formatting. Do not include any explanations or descriptions. Here is the exact format you should use:
 
+Replace "value" with your suggested values for each hyperparameter.
+
 <START_HYPERPARAMETERS>
 {
     "hyper_parameters": {
@@ -208,16 +179,6 @@ Your response should output only the JSON content between <START_HYPERPARAMETERS
     }
 }
 <STOP_HYPERPARAMETERS>
-
-Replace "value" with your suggested values for each hyperparameter.
-
----
-
-Research Question: "{research_question}"
-Research Question Classification: {research_question_class}
-Dataset Basic Evaluation: {basic_dataset_evaluation}
-
----
 """,
 
     "LIWC": """
@@ -233,6 +194,8 @@ Please analyze the research question, its classification, and the dataset charac
 
 Your response should output only the JSON content between <START_HYPERPARAMETERS> and <STOP_HYPERPARAMETERS>, without any code blocks or additional formatting. Do not include any explanations or descriptions. Here is the exact format you should use:
 
+Replace the categories and words with your suggested values.
+
 <START_HYPERPARAMETERS>
 {
     "hyper_parameters": {
@@ -245,15 +208,6 @@ Your response should output only the JSON content between <START_HYPERPARAMETERS
 }
 <STOP_HYPERPARAMETERS>
 
-Replace the categories and words with your suggested values.
-
----
-
-Research Question: "{research_question}"
-Research Question Classification: {research_question_class}
-Dataset Basic Evaluation: {basic_dataset_evaluation}
-
----
 """,
 
     "NonNegativeMatrixFactorization": """
@@ -275,6 +229,8 @@ Please analyze the research question, its classification, and the dataset charac
 
 Your response should output only the JSON content between <START_HYPERPARAMETERS> and <STOP_HYPERPARAMETERS>, without any code blocks or additional formatting. Do not include any explanations or descriptions. Here is the exact format you should use:
 
+Replace "value" with your suggested values for each hyperparameter.
+
 <START_HYPERPARAMETERS>
 {
     "hyper_parameters": {
@@ -285,16 +241,6 @@ Your response should output only the JSON content between <START_HYPERPARAMETERS
     }
 }
 <STOP_HYPERPARAMETERS>
-
-Replace "value" with your suggested values for each hyperparameter.
-
----
-
-Research Question: "{research_question}"
-Research Question Classification: {research_question_class}
-Dataset Basic Evaluation: {basic_dataset_evaluation}
-
----
 """,
 
     "ProbabilisticLatentSemanticAnalysis": """
@@ -316,6 +262,8 @@ Please analyze the research question, its classification, and the dataset charac
 
 Your response should output only the JSON content between <START_HYPERPARAMETERS> and <STOP_HYPERPARAMETERS>, without any code blocks or additional formatting. Do not include any explanations or descriptions. Here is the exact format you should use:
 
+Replace "value" with your suggested values for each hyperparameter.
+
 <START_HYPERPARAMETERS>
 {
     "hyper_parameters": {
@@ -326,15 +274,5 @@ Your response should output only the JSON content between <START_HYPERPARAMETERS
     }
 }
 <STOP_HYPERPARAMETERS>
-
-Replace "value" with your suggested values for each hyperparameter.
-
----
-
-Research Question: "{research_question}"
-Research Question Classification: {research_question_class}
-Dataset Basic Evaluation: {basic_dataset_evaluation}
-
----
 """,
 }
