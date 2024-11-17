@@ -43,7 +43,7 @@ You are an expert in configuring machine learning models. Your task is to sugges
 
 The DynamicTopicModeling has the following hyperparameters:
 
-- **k** (int): Number of topics to extract. Possible values: 1 to 32767.
+- **k** (int): Number of topics to extract. Possible values: 1 to 32767. Default = 5
 - **t** (int): Number of timepoints. Depends on the dataset's temporal granularity.
 - **alpha_var** (float): Transition variance of alpha (per-document topic distribution). Possible values: 0.01 to 1.0.
 - **eta_var** (float): Variance of eta (topic distribution of each document) from its alpha. Possible values: 0.01 to 1.0.
@@ -53,7 +53,6 @@ The DynamicTopicModeling has the following hyperparameters:
 - **lr_c** (float): Shape parameter 'c' for SGLD step size. Range: (0.5, 1].
 - **iter** (int): Number of iterations of Gibbs-sampling. Possible values: 1000 to 10000.
 - **seed** (int): Seed for reproducibility. Any integer value.
-- **tw** (str): Term weighting scheme. Possible values: "one", "idf", "pmi", "dbi".
 - **min_cf** (int): Minimum collection frequency of words. Possible values: 0 to 10.
 - **min_df** (int): Minimum document frequency of words. Possible values: 0 to 10.
 - **rm_top** (int): Number of top words to remove. Possible values: 0 to 50.
@@ -68,7 +67,6 @@ Each hyperparameter influences the model as follows:
 - **lr_a**, **lr_b**, **lr_c**: Parameters for SGLD step size, affecting convergence speed and stability.
 - **iter**: Determines the number of sampling iterations, affecting convergence.
 - **seed**: Ensures reproducibility of results.
-- **tw**: Affects the term weighting scheme used in the model.
 - **min_cf**: Excludes words with low collection frequency, reducing noise.
 - **min_df**: Excludes words appearing in few documents, reducing noise.
 - **rm_top**: Removes too common words from the model.
@@ -92,7 +90,6 @@ Replace `"value"` with your suggested values for each hyperparameter.
         "lr_c": value,
         "iter": value,
         "seed": value,
-        "tw": "value",
         "min_cf": value,
         "min_df": value,
         "rm_top": value
@@ -139,7 +136,6 @@ The LatentDirichletAllocation has the following hyperparameters:
 - **eta** (float): Hyperparameter of Dirichlet distribution for topic-word distribution. Possible values: 0.001 to 0.1.
 - **iter** (int): Number of iterations of Gibbs-sampling. Possible values: 1000 to 10000.
 - **seed** (int): Seed for reproducibility. Any integer value.
-- **tw** (str): Term weighting scheme. Possible values: "one", "idf", "pmi", "dbi".
 - **min_cf** (int): Minimum collection frequency of words. Possible values: 0 to 10.
 - **min_df** (int): Minimum document frequency of words. Possible values: 0 to 10.
 - **rm_top** (int): Number of top words to remove. Possible values: 0 to 50.
@@ -151,7 +147,6 @@ Each hyperparameter influences the model as follows:
 - **eta**: Controls the sparsity of the topic-word distribution.
 - **iter**: Determines the number of sampling iterations, affecting convergence.
 - **seed**: Ensures reproducibility of results.
-- **tw**: Affects the term weighting scheme used in the model.
 - **min_cf**: Excludes words with low collection frequency, reducing noise.
 - **min_df**: Excludes words appearing in few documents, reducing noise.
 - **rm_top**: Removes too common words from the model.
@@ -170,7 +165,6 @@ Replace `"value"` with your suggested values for each hyperparameter.
         "eta": value,
         "iter": value,
         "seed": value,
-        "tw": "value",
         "min_cf": value,
         "min_df": value,
         "rm_top": value

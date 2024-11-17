@@ -8,6 +8,8 @@
 
 !!! add a _visualize method to each algorithm
 
+!!! maybe find optimal number of topics via coherence
+
 CohMetrix
 
 # Check Parameters!!!

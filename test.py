@@ -1,5 +1,5 @@
 from tools.TextNormalizer import TextNormalizer
-from algorithms.LatentDirichletAllocation import LatentDirichletAllocation
+from algorithms.DynamicTopicModeling import DynamicTopicModeling
 import pickle as pk
 import os
 import time
@@ -18,8 +18,7 @@ for data_point in dataset[:]:
         except KeyError:
             dataset.remove(data_point)
 
-algo = LatentDirichletAllocation(k=6)
-
+algo = DynamicTopicModeling(k=6)
 start_time = time.time()
 results = algo(dataset)
 end_time = time.time() - start_time

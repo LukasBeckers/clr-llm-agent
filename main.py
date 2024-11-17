@@ -10,8 +10,10 @@ from step3.AlgorithmsSelector import AlgorithmsSelector
 from step3.prompts import algorithms_selector_prompt_v2
 from step4.HyperParameterGuessor import HyperParameterGuessor
 from step4.prompts import hyperparamter_selection_prompts
+from step4.ResultsParser import ResultsParser
+from step5.ResultsAnalyzer import ResultsAnalyzer
 
-from agents.LLMs import gpt_4o_mini, gpt_4, gpt_4o
+from agents.LLMs import gpt_4o_mini, gpt_4, gpt_4o, o1_mini	
 from dotenv import load_dotenv
 import os
 import pickle as pk
@@ -106,6 +108,7 @@ if __name__ == "__main__":
 
     print("Selecting Algorithms", algorithm_selector_reasoning_steps)
     print("Selected Algorithms", selected_algorithms)
+
     # Step 4        
 
     # Calibrate the algorithms
@@ -126,6 +129,8 @@ if __name__ == "__main__":
         for algorithm_name, hyper_parameter_guessor in hyper_parameter_guessors.items()
     }
 
+    print(hyper_parameters["DynamicTopicModeling"])
+
     calibrated_algorithms = {
         algorithm_name: algorithms[algorithm_name](
             **guessing_results["hyper_parameters"]
@@ -140,14 +145,15 @@ if __name__ == "__main__":
         for algorithm_name, algorithm in calibrated_algorithms.items()
     }
 
-    for algorithm_name, result in results.items():
-        print("Algorithmus", algorithm_name)
-        print(
-            "Hyperparameter Guessing <Reasoning>",
-            hyper_parameters[algorithm_name]["reasoning_steps"],
-        )
-        print(
-            "Hyper-Parameters",
-            hyper_parameters[algorithm_name]["hyper_parameters"],
-        )
-        print("Result", result)
+    # Parse the results
+    results_parser = ResultsParser()
+    results = results_parser(results=results)
+
+    # Step5 
+
+    # Analyze the Results
+    results_analyzer = ResultsAnalyzer(llm=o1_mini)
+
+    analysis_result = results_analyzer(results)
+
+    print("ANALYSIS RESULTS", analysis_result)
