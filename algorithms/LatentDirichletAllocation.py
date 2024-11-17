@@ -31,6 +31,7 @@ class LatentDirichletAllocation(IAlgorithm):
         callback_interval: int = 10,
         callback: Optional[Callable] = None,
         show_progress: bool = False,
+        **kwargs: Any 
     ) -> None:
         """
         LDA Algorithm, the base topic modeling algorithm on which most other
