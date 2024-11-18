@@ -19,6 +19,7 @@ for data_point in dataset[:]:
             dataset.remove(data_point)
 
 algo = DynamicTopicModeling(k=6)
+
 start_time = time.time()
 results = algo(dataset)
 end_time = time.time() - start_time

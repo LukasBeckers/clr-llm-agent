@@ -9,8 +9,6 @@ class ResultsAnalyzer(TextGenerator):
         self,
         llm: ChatOpenAI,
         prompt_explanation: str = results_analyzer_prompt,
-        start_answer_token: str = "<START_SEARCH_STRINGS>",
-        stop_answer_token: str = "<STOP_SEARCH_STRINGS>",
         start_image_token: str = "<START_IMAGE>",
         stop_image_token: str = "<STOP_IMAGE>",
         start_image_description: str = "<START_IMAGE_DISCRIPTION",
@@ -30,23 +28,23 @@ class ResultsAnalyzer(TextGenerator):
                 stop_image_description=stop_image_description,
             ),
             llm=llm,
-            start_answer_token=start_answer_token,
-            stop_answer_token=stop_answer_token,
         )
 
     def __call__(
         self,
         research_question: str,
-        research_queston_class: str,
+        research_question_class: str,
         basic_dataset_evaluation: str,
         parsed_algorithm_results: str,
+        search_strings: str,
     ) -> str:
 
         # Construct the input prompt for the ResultsAnalyzer
 
         input_text = f"""
         Research Question: "{research_question}"
-        Research Question Classification: {research_queston_class}
+        Research Question Classification: {research_question_class}
+        Search Strings used to Generate Dataset (search_string, database): {search_strings} 
         Dataset basic Evaluation: {basic_dataset_evaluation}
         Algorithm Analysis Results: {parsed_algorithm_results}
         """

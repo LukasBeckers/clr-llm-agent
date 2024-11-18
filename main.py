@@ -12,8 +12,10 @@ from step4.HyperParameterGuessor import HyperParameterGuessor
 from step4.prompts import hyperparamter_selection_prompts
 from step4.ResultsParser import ResultsParser
 from step5.ResultsAnalyzer import ResultsAnalyzer
+from step6.LaTeXPaperGenerator import LaTeXPaperGenerator
+from step6.prompts import latex_paper_prompt
 
-from agents.LLMs import gpt_4o_mini, gpt_4, gpt_4o, o1_mini	
+from agents.LLMs import gpt_4o_mini, gpt_4, gpt_4o, o1_mini
 from dotenv import load_dotenv
 import os
 import pickle as pk
@@ -55,7 +57,7 @@ if __name__ == "__main__":
 
     # Downloading the datasets from the datasources
     data_loader = DataLoader(email=email)
-    #data_set = data_loader(search_strings=search_strings[:])
+    # data_set = data_loader(search_strings=search_strings[:])
     # data_set = data_loader(search_strings=[("Glymph* OR Brain_Clearance", "pub_med")])
 
     # with open(os.path.join("temp", "dataset"), "wb") as f:
@@ -109,13 +111,13 @@ if __name__ == "__main__":
     print("Selecting Algorithms", algorithm_selector_reasoning_steps)
     print("Selected Algorithms", selected_algorithms)
 
-    # Step 4        
+    # Step 4
 
     # Calibrate the algorithms
     hyper_parameter_guessors = {
         algorithm_name: HyperParameterGuessor(
             prompt_explanation=hyperparamter_selection_prompts[algorithm_name],
-            llm=base_model
+            llm=base_model,
         )
         for algorithm_name in selected_algorithms
     }
@@ -129,7 +131,9 @@ if __name__ == "__main__":
         for algorithm_name, hyper_parameter_guessor in hyper_parameter_guessors.items()
     }
 
-    print(hyper_parameters["DynamicTopicModeling"])
+    hyper_parameters["DynamicTopicModeling"]["hyper_parameters"]["t"] = 10
+    hyper_parameters["DynamicTopicModeling"]["hyper_parameters"]["k"] = 5
+    hyper_parameters["DynamicTopicModeling"]["hyper_parameters"]["iter"] = 1000
 
     calibrated_algorithms = {
         algorithm_name: algorithms[algorithm_name](
@@ -140,20 +144,40 @@ if __name__ == "__main__":
 
     # Perform the analysis
 
-    results = {
-        algorithm_name: algorithm(dataset)
-        for algorithm_name, algorithm in calibrated_algorithms.items()
-    }
+    results = {}
+
+    for algorithm_name, algorithm in calibrated_algorithms.items():
+
+        try:
+            results[algorithm_name] = algorithm(dataset)
+        except Exception as e:
+            results[algorithm_name] = e
 
     # Parse the results
+
     results_parser = ResultsParser()
     results = results_parser(results=results)
 
-    # Step5 
+    # Step5
 
     # Analyze the Results
-    results_analyzer = ResultsAnalyzer(llm=o1_mini)
+    results_analyzer = ResultsAnalyzer(llm=gpt_4o)
 
-    analysis_result = results_analyzer(results)
+    analysis_result = results_analyzer(
+        research_question=research_question,
+        research_question_class=rq_class,
+        parsed_algorithm_results=results,
+        search_strings=search_strings,
+        basic_dataset_evaluation=basic_dataset_evalutation
+    )
 
     print("ANALYSIS RESULTS", analysis_result)
+
+    # Step6 
+
+    # Generate PDF
+
+    pdf_generator = LaTeXPaperGenerator(gpt_4o)
+    
+    pdf_generator(analysis_results=analysis_result)
+    

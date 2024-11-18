@@ -174,7 +174,7 @@ Description:
         iter=1000,
         freeze_topics=False,
         # Train Parameters to be set by human (default config)
-        workers: int = 4,
+        workers: int = 10,
         parallel: Union[int, ParallelScheme] = 1,
         callback_interval=10,
         callback=None,
@@ -254,6 +254,22 @@ Description:
             If True, it shows progress bar during training using tqdm package.
 
         """
+        self.tw=tw
+        self.min_cf=min_cf
+        self.min_df=min_df
+        self.rm_top=rm_top
+        self.k=k
+        self.t=t
+        self.alpha_var=alpha_var
+        self.eta_var=eta_var
+        self.phi_var=phi_var
+        self.lr_a=lr_a
+        self.lr_b=lr_b
+        self.lr_c=lr_c
+        self.seed=seed
+        self.corpus= corpus
+        self.transform = transform
+      
         # Store the training parameters
         self.iter = iter
         self.freeze_topics = freeze_topics
@@ -262,9 +278,6 @@ Description:
         self.callback_interval = 10
         self.callback = callback
         self.show_progress = show_progress
-
-        # storing the number of time_points
-        self.t = t
 
         # Intitialize Model
         self.model = DTModel(
@@ -569,6 +582,27 @@ Presented in this form:
         :param documents: List of document dictionaries.
         :return: Dictionary containing model results.
         """
+        # Debug
+        print({
+                "tw": self.tw,
+                "min_cf": self.min_cf,
+                "min_df": self.min_df,
+                "rm_top": self.rm_top,
+                "k": self.k,
+                "t": self.t,
+                "alpha_var": self.alpha_var,
+                "eta_var": self.eta_var,
+                "phi_var": self.phi_var,
+                "lr_a": self.lr_a,
+                "lr_b": self.lr_b,
+                "lr_c": self.lr_c,
+                "seed": self.seed,
+                "corpus": self.corpus,
+                "iter":self.iter,
+                "freeze_topics":self.freeze_topics
+            })
+        ####
+
         # Always deepcopy documents at strart of algorithm call to pervent
         # documents from changing
         documents = copy.deepcopy(documents)
@@ -653,6 +687,93 @@ The number of words allocated to each timepoint and topic in the shape
 ([num_timepoints, num_topics]...)
             """,
             "Counts Per Topic": self.model.get_count_by_topics(),
+            "Hyperparameters Explanation": """DT Parameters
+
+        tw : Union[int, TermWeight]
+            term weighting scheme in TermWeight. The default value is TermWeight.ONE
+
+        min_cf : int
+            minimum collection frequency of words. Words with a smaller collection frequency than min_cf are excluded from the model. The default value is 0, which means no words are excluded.
+
+        min_df : int
+            minimum document frequency of words. Words with a smaller document frequency than min_df are excluded from the model. The default value is 0, which means no words are excluded
+
+        rm_top : int
+            the number of top words to be removed. If you want to remove too common words from model, you can set this value to 1 or more. The default value is 0, which means no top words are removed.
+
+        k : int
+            the number of topics between 1 ~ 32767
+
+        t : int
+            the number of timpoints
+
+        alpha_var : float
+            transition variance of alpha (per-document topic distribution)
+
+        eta_var : float
+            variance of eta (topic distribution of each document) from its alpha
+
+        phi_var : float
+            transition variance of phi (word distribution of each topic)
+
+        lr_a : float
+            shape parameter a greater than zero, for SGLD step size calculated as e_i = a * (b + i) ^ (-c)
+
+        lr_b : float
+            shape parameter b greater than or equal to zero, for SGLD step size calculated as e_i = a * (b + i) ^ (-c)
+
+        lr_c : float
+            shape parameter c with range (0.5, 1], for SGLD step size calculated as e_i = a * (b + i) ^ (-c)
+
+        seed : int
+            random seed. default value is a random number from std::random_device{} in C++
+
+        corpus : Corpus
+            a list of documents to be added into the model
+
+        transform : Callable[dict, dict]
+            a callable object to manipulate arbitrary keyword arguments for a specific topic model
+
+        Train Parameters
+
+        iter : int
+            the number of iterations of Gibbs-sampling
+
+        workers : int
+            an integer indicating the number of workers to perform samplings. If workers is 0, the number of cores in the system will be used.
+
+        parallel : Union[int, ParallelScheme]
+            the parallelism scheme for training. the default value is ParallelScheme.DEFAULT which means that tomotopy selects the best scheme by model.
+
+        freeze_topics : bool
+            prevents to create a new topic when training. Only valid for HLDAModel
+
+        callback_interval : int
+            the interval of calling callback function. If callback_interval <= 0, callback function is called at the beginning and the end of training.
+
+        callback : Callable[[LDAModel, int, int], None]
+            a callable object which is called every callback_interval iterations. It receives three arguments: the current model, the current number of iterations, and the total number of iterations.
+
+        show_progress : bool
+            If True, it shows progress bar during training using tqdm package.""",
+            "Hyperparameters": {
+                "tw": self.tw,
+                "min_cf": self.min_cf,
+                "min_df": self.min_df,
+                "rm_top": self.rm_top,
+                "k": self.k,
+                "t": self.t,
+                "alpha_var": self.alpha_var,
+                "eta_var": self.eta_var,
+                "phi_var": self.phi_var,
+                "lr_a": self.lr_a,
+                "lr_b": self.lr_b,
+                "lr_c": self.lr_c,
+                "seed": self.seed,
+                "corpus": self.corpus,
+                "iter":self.iter,
+                "freeze_topics":self.freeze_topics
+            }
         }
 
         for k in range(self.model.k):

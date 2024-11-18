@@ -161,7 +161,8 @@ class LatentDirichletAllocation(IAlgorithm):
         ax.set_xlabel("Topic")
         ax.set_ylabel("Word Count")
         ax.set_xticks(topics)
-        ax.set_xticklabels([f"Topic {i}" for i in topics])
+        ax.set_xticklabels([f"Topic {i}" for i in topics],
+                           rotation="vertical")
 
         # Adding labels on top of each bar
         for bar in bars:
@@ -320,6 +321,53 @@ The number of words allocated to each topic in the form of [n_words_topic_1,
 n_words_topic_2....])
             """,
             "Counts Per Topic": model.get_count_by_topics(),
+            "Hyperparameters Explanation": """LDA Algorithm, the base topic modeling algorithm on which most other
+        tm algorithms are based.
+
+        tomotopy LDA Model initialization parameters:
+
+        tw : Union[int, TermWeight]
+            term weighting scheme in TermWeight. The default value is
+            TermWeight.ONE
+        min_cf : int
+            minimum collection frequency of words. Words with a smaller collection frequency than min_cf are excluded from the model. The default value is 0, which means no words are excluded.
+        min_df : int
+            minimum document frequency of words. Words with a smaller document frequency than min_df are excluded from the model. The default value is 0, which means no words are excluded
+        rm_top : int
+            the number of top words to be removed. If you want to remove too common words from model, you can set this value to 1 or more. The default value is 0, which means no top words are removed.
+        k : Optional(int)
+            the number of topics between 1 ~ 32767
+            if k == None topic models from 0 to 100 will be calculated and the
+            optimal number of topics will be found by searching the knee of the
+            perplexity number of topics curve.
+        alpha : Union[float, Iterable[float]]
+            hyperparameter of Dirichlet distribution for document-topic, given as a single float in case of symmetric prior and as a list with length k of float in case of asymmetric prior.
+        eta : float
+            hyperparameter of Dirichlet distribution for topic-word
+        seed : int
+            random seed. The default value is a random number from std::random_device{} in C++
+        transform : Callable[dict, dict]
+            a callable object to manipulate arbitrary keyword arguments for a specific topic model
+
+        Training Parameters
+        iter : int
+            the number of iterations of Gibbs-sampling
+        workers : int
+            an integer indicating the number of workers to perform samplings. If workers is 0, the number of cores in the system will be used.
+        parallel : Union[int, ParallelScheme]
+            the parallelism scheme for training. the default value is ParallelScheme.DEFAULT which means that tomotopy selects the best scheme by model.""",
+            "Hyperparameters": {
+                "tw": self.tw,
+                "min_cf": self.min_cf,
+                "min_df": self.min_df,
+                "rm_top": self.rm_top,
+                "k": self.k,
+                "alpha": self.alpha,
+                "eta": self.eta  ,
+                "seed": self.seed,
+                "transform": self.transform ,
+                "iter": self.iter
+            }
         }
 
         for k in range(self.k):
