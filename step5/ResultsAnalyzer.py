@@ -28,6 +28,7 @@ class ResultsAnalyzer(TextGenerator):
                 stop_image_description=stop_image_description,
             ),
             llm=llm,
+            max_tokens=15000
         )
 
     def __call__(

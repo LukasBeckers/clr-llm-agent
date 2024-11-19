@@ -23,6 +23,7 @@ class LaTeXPaperGenerator(TextGenerator):
         super().__init__(
             prompt_explanation=prompt_explanation,
             llm=llm,
+            max_tokens=15000
         )
 
     def __call__(self, analysis_results: str) -> str:
