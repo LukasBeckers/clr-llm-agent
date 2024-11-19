@@ -4,7 +4,7 @@ You will be presented with the analysis results of a research question.
 
 Your task is to write a LaTeX article document in the style of a scientific paper based on these results.
 
-Include appropriate sections such as Abstract, Introduction, Methodology, Results, Discussion, Conclusion, and References.
+Include appropriate sections such as Abstract, Introduction, Methodology, Results, Discussion, Conclusion.
 
 Make sure to use proper LaTeX formatting and include any necessary packages in the preamble.
 
@@ -14,4 +14,10 @@ Ensure that you properly handle any image descriptions provided between {start_i
 
 Return only the LaTeX code, and do not include any explanations.
 
+Do not include references or acnowledgments!
+
+make sure that images fit on a page, by starting a new page before inserting the 
+image. 
+
+The report should be around 2000 words long. 
 """

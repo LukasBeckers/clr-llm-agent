@@ -120,13 +120,8 @@ class App(tk.Tk):
         text_area.tag_config("reasoning", foreground="blue")
         text_area.tag_config("result", foreground="green")
         text_area.tag_config("header", font=("Helvetica", 14, "bold"))
+        text_area.tag_config("statement", font=("Helvetica", 12))
         setattr(self, f"step_{step_number}_text", text_area)
-
-        if step_number == 5:
-            # Canvas for images in step 5
-            canvas_frame = ttk.Frame(frame)
-            canvas_frame.pack(pady=10)
-            setattr(self, f"step_{step_number}_canvas_frame", canvas_frame)
 
         # Start Button for each step
         start_button = ttk.Button(
@@ -167,11 +162,7 @@ class App(tk.Tk):
             self.notebook.select(self.current_step)
 
     def enable_next_tab(self, tab_id: int):
-        if self.current_step > tab_id:
-            # you are redoing a step
-            self.current_step = tab_id + 1
-            return
-        if self.current_step < 5:
+        if self.current_step < 6:
             self.current_step += 1
             self.notebook.tab(self.current_step, state="normal")
             # Do not automatically select the next tab
@@ -196,7 +187,7 @@ class App(tk.Tk):
         text_area.insert(
             tk.END, f"Step 1: Research Question Classification\n", "header"
         )
-
+        self.update()
         # Initialize the classifier
         research_question_classifier = ReasoningResearchQuestionClassifier(
             base_model
@@ -213,17 +204,23 @@ class App(tk.Tk):
             f"Reasoning for Question Classification:\n{reasoning_rq}\n",
             "reasoning",
         )
-
+        self.update()  # Force update of GUI
         # Display the classification result in green
         text_area.insert(
             tk.END,
             f"Research Question Classification: {self.rq_class}\n",
             "result",
         )
-
+        self.update()  # Force update of GUI
         # Enable the next tab
-        self.enable_next_tab(tab_id=0)
+        self.enable_next_tab(tab_id=1)
         # Stay on the current tab and wait for user to proceed
+        text_area.insert(
+            tk.END,
+            f"Step 1 Finished!\n",
+            "header",
+        )
+        self.update()
 
     def run_step2(self):
         text_area = self.step_2_text
@@ -233,7 +230,7 @@ class App(tk.Tk):
             f"Step 2: Generate Search Strings and Load Data\n",
             "header",
         )
-
+        self.update()
         # Generate search strings
         pubmed_search_string_generator = ReasoningSearchQueryGenerator(
             base_model
@@ -251,17 +248,17 @@ class App(tk.Tk):
             f"Reasoning Search Strings:\n{reasoning_search_strings}\n",
             "reasoning",
         )
-
+        self.update()
         # Display search strings in green
         text_area.insert(
             tk.END, f"Search Strings:\n{search_strings}\n", "result"
         )
-
+        self.update()
         # Save search strings for use in data loading
         self.search_strings = search_strings
 
         # Load data
-        text_area.insert(tk.END, f"Loading data...\n")
+        text_area.insert(tk.END, f"Loading data...\n", "statement")
         self.update()  # Force update of GUI
 
         data_loader = DataLoader(email=email)
@@ -279,20 +276,30 @@ class App(tk.Tk):
             f"Number of publications found: {num_publications}\n",
             "result",
         )
-
+        self.update()
         # Normalize text
+        text_area.insert(tk.END, f"Normalizing texts...\n", "statement")
+        text_area.insert(tk.END, f"Cleaning the Dataset...\n", "statement")
         text_normalizer = TextNormalizer()
         for data_point in self.data_set[:]:
             try:
-                data_point["Abstract Normalized"] = text_normalizer(
+                data_point["AbstractNormalized"] = text_normalizer(
                     data_point["Abstract"]
                 )
             except KeyError:
                 self.data_set.remove(data_point)
 
+        self.update()
+
         # Enable the next tab
         self.enable_next_tab(tab_id=2)
         # Stay on the current tab and wait for user to proceed
+        text_area.insert(
+            tk.END,
+            f"Step 2 Finished!\n",
+            "header",
+        )
+        self.update()
 
     def run_step3(self):
         text_area = self.step_3_text
@@ -302,7 +309,7 @@ class App(tk.Tk):
             f"Step 3: Analyze Dataset and Select Algorithms\n",
             "header",
         )
-
+        self.update()
         # Analyze dataset
         basic_dataset_analyzer = BasicDatasetAnalyzer(llm=base_model)
 
@@ -321,7 +328,7 @@ class App(tk.Tk):
             f"Dataset Description:\n{self.basic_dataset_description}\n",
             "result",
         )
-
+        self.update()
         # Plot the 'Publications Over Time' data
         publications_over_time = self.basic_dataset_evaluation.get(
             "Publications Over Time", {}
@@ -358,8 +365,15 @@ class App(tk.Tk):
         )
 
         # Enable the next tab
-        self.enable_next_tab(tab_id=2)
+        self.enable_next_tab(tab_id=3)
         # Stay on the current tab and wait for user to proceed
+        self.update()
+        text_area.insert(
+            tk.END,
+            f"Step 3 Finished!\n",
+            "header",
+        )
+        self.update()
 
     def plot_publications_over_time(self, data):
         # Prepare data
@@ -378,76 +392,128 @@ class App(tk.Tk):
         canvas.draw()
         canvas.get_tk_widget().pack()
 
+        publications_over_time_path = os.path.join("visualizations", "PublicationsOverTime.png")
+
+        fig.savefig(publications_over_time_path)
+
+        self.basic_dataset_evaluation["Path To Plot of Publications over Time"] = publications_over_time_path
+
     def run_step4(self):
-        logging.info("Starting Step 4: Calibrate and Run Algorithms")
+
+        print("Starting Step 4: Calibrate and Run Algorithms")
         text_area = self.step_4_text
         text_area.delete(1.0, tk.END)
         text_area.insert(
             tk.END, f"Step 4: Calibrate and Run Algorithms\n", "header"
         )
-
+        self.update()
         try:
             # Calibrate the algorithms
-            logging.debug("Calibrating algorithms")
-            hyper_parameter_guessors = {
-                algorithm_name: HyperParameterGuessor(
-                    prompt_explanation=hyperparamter_selection_prompts[
-                        algorithm_name
-                    ],
-                    llm=base_model,
-                )
-                for algorithm_name in self.selected_algorithms
-            }
+            print("Calibrating algorithms")
+            try:
+                hyper_parameter_guessors = {
+                    algorithm_name: HyperParameterGuessor(
+                        prompt_explanation=hyperparamter_selection_prompts[
+                            algorithm_name
+                        ],
+                        llm=base_model,
+                    )
+                    for algorithm_name in self.selected_algorithms
+                }
+            except Exception as e:
+                logging.exception("Error initializing HyperParameterGuessor")
+                raise
 
-            self.hyper_parameters = {
-                algorithm_name: hyper_parameter_guessor(
-                    research_question=self.rq,
-                    research_question_class=self.rq_class,
-                    basic_dataset_evaluation=self.basic_dataset_evaluation,
-                )
-                for algorithm_name, hyper_parameter_guessor in hyper_parameter_guessors.items()
-            }
+            try:
+                self.hyper_parameters = {
+                    algorithm_name: hyper_parameter_guessor(
+                        research_question=self.rq,
+                        research_question_class=self.rq_class,
+                        basic_dataset_evaluation=self.basic_dataset_evaluation,
+                    )
+                    for algorithm_name, hyper_parameter_guessor in hyper_parameter_guessors.items()
+                }
+            except Exception as e:
+                logging.exception("Error obtaining hyperparameters")
+                raise
 
             # Debugging, reducing the number of iterations for demonstration
             if "DynamicTopicModeling" in self.hyper_parameters:
-                self.hyper_parameters["DynamicTopicModeling"]["hyper_parameters"]["t"] = 10
-                self.hyper_parameters["DynamicTopicModeling"]["hyper_parameters"]["k"] = 5
-                self.hyper_parameters["DynamicTopicModeling"]["hyper_parameters"]["iter"] = 500
-                logging.debug("Reduced iterations for DynamicTopicModeling for debugging")
+                try:
+                    self.hyper_parameters["DynamicTopicModeling"][
+                        "hyper_parameters"
+                    ]["t"] = 10
+                    self.hyper_parameters["DynamicTopicModeling"][
+                        "hyper_parameters"
+                    ]["k"] = 6
+                    self.hyper_parameters["DynamicTopicModeling"][
+                        "hyper_parameters"
+                    ]["iter"] = 500
+                    self.hyper_parameters["LatentDirichletAllocation"][
+                        "hyper_parameters"
+                    ]["k"] = 6
+                 
+                except KeyError as e:
+                    logging.exception(
+                        "Error modifying hyperparameters for DynamicTopicModeling"
+                    )
+                    raise
             else:
-                raise KeyError("DynamicTopicModeling algorithm not found in hyper_parameters.")
+                raise KeyError(
+                    "DynamicTopicModeling algorithm not found in hyper_parameters."
+                )
 
             # Display hyperparameters in green
             for alg_name, params in self.hyper_parameters.items():
                 text_area.insert(
                     tk.END,
-                    f"Hyperparameters for {alg_name}:\n{params}\n",
+                    f"Reasoning Steps for {alg_name}:\n{params["reasoning_steps"]}\n",
+                    "reasoning",
+                )
+                text_area.insert(
+                    tk.END,
+                    f"Hyperparameters for {alg_name}:\n{params["hyper_parameters"]}\n",
                     "result",
                 )
-                logging.debug(f"Hyperparameters for {alg_name}: {params}")
+                print(f"Hyperparameters for {alg_name}: {params}")
 
             # Run the algorithms
             self.results = {}
 
-            self.calibrated_algorithms = {
-                algorithm_name: algorithms[algorithm_name](
-                    **guessing_results["hyper_parameters"]
-                )
-                for algorithm_name, guessing_results in self.hyper_parameters.items()
-            }
+            try:
+                self.calibrated_algorithms = {
+                    algorithm_name: algorithms[algorithm_name](
+                        **guessing_results["hyper_parameters"]
+                    )
+                    for algorithm_name, guessing_results in self.hyper_parameters.items()
+                }
+            except Exception as e:
+                logging.exception("Error calibrating algorithms")
+                raise e
 
-            for algorithm_name, algorithm in self.calibrated_algorithms.items():
+            for (
+                algorithm_name,
+                algorithm,
+            ) in self.calibrated_algorithms.items():
+                ## Debugging
+                # if algorithm_name == "LatentDirichletAllocation": continue
+                ##
+                self.update()
                 try:
-                    logging.debug(f"Running algorithm: {algorithm_name}")
+                    print(f"Running algorithm: {algorithm_name}...")
+                    text_area.insert(
+                        tk.END,
+                        f"Running algorithm: {algorithm_name}...\n",
+                        "statement",
+                    )
                     self.results[algorithm_name] = algorithm(self.data_set)
-                    logging.debug(f"Algorithm {algorithm_name} completed successfully")
+                    print(f"Algorithm {algorithm_name} completed successfully")
                 except Exception as e:
                     self.results[algorithm_name] = e
-                    logging.error(f"Error running {algorithm_name}: {e}")
                     text_area.insert(
                         tk.END,
                         f"Error running {algorithm_name}: {e}\n",
-                        "reasoning",
+                        "statement",
                     )
 
             # Display results
@@ -456,21 +522,33 @@ class App(tk.Tk):
                 f"Algorithm Results:\n{self.results}\n",
                 "result",
             )
-            logging.info("Step 4 completed successfully")
+            print("Step 4 completed successfully")
+
+            for algorithm, algo_results in self.results.items():
+                print(algorithm, len(str(algo_results)))
+                for result_name, result_values in algo_results.items():
+                    print(result_name, len(str(result_values)))
 
             # Enable the next tab
-            self.enable_next_tab(tab_id=3)
+            self.enable_next_tab(tab_id=4)
+
+            text_area.insert(
+                tk.END,
+                f"Step 4 Finished!\n",
+                "header",
+            )
+            self.update()
 
         except Exception as e:
             logging.exception("An error occurred in Step 4")
             messagebox.showerror("Error", f"An error occurred in Step 4:\n{e}")
             self.start_button.config(state=tk.NORMAL)
 
-
     def run_step5(self):
         text_area = self.step_5_text
         text_area.delete(1.0, tk.END)
         text_area.insert(tk.END, f"Step 5: Analyze Results\n", "header")
+        self.update()
 
         # Parse the results
         results_parser = ResultsParser()
@@ -479,12 +557,14 @@ class App(tk.Tk):
         # Analyze the Results
         results_analyzer = ResultsAnalyzer(llm=base_model)
 
+        # Not nice
+
         self.analysis_result = results_analyzer(
             research_question=self.rq,
             research_question_class=self.rq_class,
             parsed_algorithm_results=parsed_results,
             search_strings=self.search_strings,
-            basic_dataset_evaluation=self.basic_dataset_evaluation,
+            basic_dataset_evaluation=self.basic_dataset_evaluation 
         )
 
         # Display analysis result
@@ -492,12 +572,15 @@ class App(tk.Tk):
             tk.END, f"Analysis Result:\n{self.analysis_result}\n", "result"
         )
 
-        # If there are images in the results, display them
-        self.display_results_images(parsed_results)
-
         # Enable the next tab
-        self.enable_next_tab(tab_id=4)
+        self.enable_next_tab(tab_id=5)
         # Stay on the current tab and wait for user to proceed
+        text_area.insert(
+            tk.END,
+            f"Step 5 Finished!\n",
+            "header",
+        )
+        self.update()
 
     def display_results_images(self, parsed_results):
         canvas_frame = self.step_5_canvas_frame
@@ -513,6 +596,7 @@ class App(tk.Tk):
         text_area = self.step_6_text
         text_area.delete(1.0, tk.END)
         text_area.insert(tk.END, f"Step 6: Generate PDF\n", "header")
+        self.update()
 
         # Generate PDF
         pdf_generator = LaTeXPaperGenerator(base_model)

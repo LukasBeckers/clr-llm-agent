@@ -15,5 +15,11 @@ below the image. To signal that you start a image description write:
 Your task is to write a scientific paper based on the results of the analysis. 
 
 The go in depth and try to realize novel insights from the results!
+
+Write at least 10000 words!
+
+Do not worry about citations, they are added later. 
+
+Go really really in depth and go over and beyond in writing a detailed analysis.
 """
 

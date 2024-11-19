@@ -122,7 +122,7 @@ class LatentDirichletAllocation(IAlgorithm):
         cols = 3  # Number of columns in the grid
         rows = (num_topics + cols - 1) // cols  # Calculate number of rows
 
-        fig, axes = plt.subplots(rows, cols, figsize=(15, 5 * rows))
+        fig, axes = plt.subplots(rows, cols, figsize=(6, 6))
         axes = axes.flatten()
 
         for i, (topic_key, words) in enumerate(topic_words.items()):
@@ -155,7 +155,7 @@ class LatentDirichletAllocation(IAlgorithm):
         counts_per_topic = results["Counts Per Topic"]  # Assuming this is a list of word counts per topic
         topics = list(range(len(counts_per_topic)))  # List of topic indices
 
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(6, 6))
         bars = ax.bar(topics, counts_per_topic)
         ax.set_title("Word Counts per Topic")
         ax.set_xlabel("Topic")
@@ -264,7 +264,7 @@ class LatentDirichletAllocation(IAlgorithm):
 
         # Making a deep copy of documents, so that the original documents will
         # not be changed in this algorithm.
-
+        print("In LDA")
         documents = copy.deepcopy(documents)
         # remove all documents that have no key Abstarct Normalized
         len_documents_initially = len(documents)
@@ -273,13 +273,14 @@ class LatentDirichletAllocation(IAlgorithm):
             for document in documents
             if "AbstractNormalized" in document.keys()
         ]
-
+        print("Normalized Documents")
         # Performing the Analysis
         if self.k is None:
             # Searching for the optimal value of k if k=None
             k, model = self._find_k(documents)
         else:
             # Performing the normal LDA if k is not None
+            print("Creating the model")
             model = LDAModel(
                 tw=self.tw,
                 min_cf=self.min_cf,
@@ -291,10 +292,12 @@ class LatentDirichletAllocation(IAlgorithm):
                 seed=self.seed,
                 transform=self.transform,
             )
+            print("Adding the Documents")
             for document in documents:
                 words = document["AbstractNormalized"]
                 model.add_doc(words)
 
+            print("Training the model")
             model.train(
                 iter=self.iter,
                 workers=self.workers,
@@ -302,7 +305,8 @@ class LatentDirichletAllocation(IAlgorithm):
                 freeze_topics=self.freeze_topics,
                 show_progress=self.show_progress,
             )
-
+        print("Extracting the results")
+     
         # Extracting the results
         results = {
             "Documents Analyzed": len(documents),
@@ -370,12 +374,18 @@ n_words_topic_2....])
             }
         }
 
+        print("after Results initialization")
+        
         for k in range(self.k):
             topic_words = model.get_topic_words(k, top_n=10)
             results["Topic Words"]["topic{}".format(k)] = topic_words
 
-        # Adding visualizations to the results
+        print("After Adding Topic Words")
+
+        # # Adding visualizations to the results
 
         results = self._visualize(results=results)
+
+        print("After adding Visualizations")
 
         return results

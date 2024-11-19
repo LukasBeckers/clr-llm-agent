@@ -12,6 +12,7 @@ class LatentSemanticIndexing:
         num_words: int = 10,
         random_state: Optional[int] = None,
         chunksize: int = 1000,
+        **kwargs: Any
     ) -> None:
         """
         Initializes the LSI model with specified hyperparameters.
@@ -50,7 +51,6 @@ class LatentSemanticIndexing:
             corpus=self.corpus,
             id2word=self.dictionary,
             num_topics=self.num_topics,
-            random_state=self.random_state,
             chunksize=self.chunksize,
         )
 
@@ -94,10 +94,10 @@ class LatentSemanticIndexing:
         # Extract "Abstract Normalized" from each document
         abstracts: List[List[str]] = []
         for doc in documents_copy:
-            abstract_normalized = doc.get("Abstract Normalized")
+            abstract_normalized = doc.get("AbstractNormalized")
             if not isinstance(abstract_normalized, list) or not all(isinstance(token, str) for token in abstract_normalized):
                 raise ValueError(
-                    "Each document must contain an 'Abstract Normalized' field as a list of strings."
+                    "Each document must contain an 'AbstractNormalized' field as a list of strings."
                 )
             abstracts.append(abstract_normalized)
 
@@ -111,10 +111,8 @@ class LatentSemanticIndexing:
             'num_topics': self.num_topics,
             'num_words': self.num_words,
             'chunksize': self.chunksize,
-            'random_state': self.random_state,
             'topics': topics,
             'model': self.model,
-            'dictionary': self.dictionary,
-            'corpus': self.corpus,
+            'dictionary': self.dictionary
         }
         return result

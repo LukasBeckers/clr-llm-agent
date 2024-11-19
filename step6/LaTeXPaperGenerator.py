@@ -21,12 +21,7 @@ class LaTeXPaperGenerator(TextGenerator):
         self.stop_image_description = stop_image_description
 
         super().__init__(
-            prompt_explanation=prompt_explanation.format(
-                start_image_token=start_image_token,
-                stop_image_token=stop_image_token,
-                start_image_description=start_image_description,
-                stop_image_description=stop_image_description,
-            ),
+            prompt_explanation=prompt_explanation,
             llm=llm,
         )
 
@@ -48,7 +43,7 @@ class LaTeXPaperGenerator(TextGenerator):
 
         # Save the LaTeX code to a .tex file
         tex_filename = f"temp/{pdf_name}.tex"
-        with open(tex_filename, "w") as tex_file:
+        with open(tex_filename, "w", encoding="utf-8") as tex_file:
             tex_file.write(latex_code)
 
         # Compile the LaTeX code to PDF using pdflatex

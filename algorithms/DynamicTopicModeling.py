@@ -327,7 +327,7 @@ Description:
         # we need it in topics, timepoints
         counts_per_topic = counts_per_topic.T
 
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(6,6))
 
         ax.set_title("Topic Word Counts")
         ax.set_xticks(np.arange(len(timepoints)))
@@ -403,8 +403,10 @@ Presented in this form:
 
         ax.legend()
         fig.tight_layout()
+
+        dynamic_topic_word_counts_path = os.path.join("visualizations", "DynamicTopicWordCounts.png")
         fig.savefig(
-            os.path.join("visualizations", "DynamicTopicWordCounts.png")
+            dynamic_topic_word_counts_path
         )
 
         results[
@@ -418,7 +420,7 @@ Presented in this form:
         first topic described in "Topic Names" and so on) or the name to
         discribe the plot. 
 """
-        results["DynamicTopicWordCounts"] = "DynamicTopicWordCounts.png"
+        results["DynamicTopicWordCounts"] = dynamic_topic_word_counts_path
 
         # Dynamic Topic Distribution
 
@@ -444,7 +446,7 @@ Presented in this form:
 """
         results["Topic Distributions"] = topic_distributions
 
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(6,6))
 
         ax.set_title("Dynamic Topic Distribution")
         ax.set_xticks(np.arange(len(timepoints)))
@@ -472,8 +474,9 @@ Presented in this form:
 
         ax.legend()
         fig.tight_layout()
+        dynamic_topic_distribution_path = os.path.join("visualizations", "DynamicTopicDistributions.png")
         fig.savefig(
-            os.path.join("visualizations", "DynamicTopicDistributions.png")
+            dynamic_topic_distribution_path
         )
 
         results[
@@ -487,7 +490,7 @@ Presented in this form:
         the first topic described in "Topic Names" and so on) or the name to
         discribe the plot. 
 """
-        results["DynamicTopicWordCounts"] = "DynamicTopicWordCounts.png"
+        results["DynamicTopicWordCounts"] = dynamic_topic_distribution_path
 
         # Top Words over time
 
@@ -520,7 +523,7 @@ Presented in this form:
                 row.append(words_str)
             cell_text.append(row)
 
-        fig, ax = plt.subplots(figsize=(12, len(topics) * 0.5))
+        fig, ax = plt.subplots(figsize=(6, 4))
 
         ax.xaxis.set_visible(False)
         ax.yaxis.set_visible(False)
@@ -542,7 +545,11 @@ Presented in this form:
         )  # You may need to adjust scaling based on your data
 
         plt.tight_layout()
-        fig.savefig(os.path.join("visualizations", "TopicWordsOverTime.png"))
+        topic_words_over_time_path = os.path.join("visualizations", "TopicWordsOverTime.png")
+        fig.savefig(topic_words_over_time_path)
+
+        results["TopicWordsOverTime"] = topic_words_over_time_path
+
         data = {}
         for t in range(num_timepoints):
             column_data = []
