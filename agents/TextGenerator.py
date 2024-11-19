@@ -1,16 +1,14 @@
-# agents/TextGenerator.py
-
 from langchain.prompts import PromptTemplate
 from langchain_community.chat_models import ChatOpenAI
 from langchain.chains import LLMChain
 from typing import Optional
-
 
 class TextGenerator:
     def __init__(
         self, 
         prompt_explanation: str, 
         llm: ChatOpenAI,
+        max_tokens: Optional[int] = 1000,  # Default max tokens set to 1000
     ):
         """
         Initializes the TextGenerator with a specific prompt explanation and language model.
@@ -18,6 +16,7 @@ class TextGenerator:
         Args:
             prompt_explanation (str): A detailed explanation of the task for the LLM.
             llm (ChatOpenAI): An instance of the ChatOpenAI language model.
+            max_tokens (Optional[int]): The maximum number of tokens for the generated output.
         """
         # Define the prompt template with placeholders for prompt_explanation and input_text
         self.prompt_template = PromptTemplate(
@@ -33,6 +32,9 @@ class TextGenerator:
         
         self.prompt_explanation = prompt_explanation
         self.llm = llm
+        
+        # Set the max tokens in the LLM instance
+        self.llm.max_tokens = max_tokens
         
         # Initialize the LLMChain with the defined prompt template
         self.generation_chain = LLMChain(
@@ -56,6 +58,3 @@ class TextGenerator:
             input_text=input_text
         )
         return generated_text
-    
-
-
