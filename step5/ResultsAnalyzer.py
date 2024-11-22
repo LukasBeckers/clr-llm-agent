@@ -36,8 +36,10 @@ class ResultsAnalyzer(TextGenerator):
         research_question: str,
         research_question_class: str,
         basic_dataset_evaluation: str,
+        hyperparameters: str, 
         parsed_algorithm_results: str,
         search_strings: str,
+        
     ) -> str:
 
         # Construct the input prompt for the ResultsAnalyzer
@@ -47,6 +49,7 @@ class ResultsAnalyzer(TextGenerator):
         Research Question Classification: {research_question_class}
         Search Strings used to Generate Dataset (search_string, database): {search_strings} 
         Dataset basic Evaluation: {basic_dataset_evaluation}
+        Hyperparameters: {hyperparameters}
         Algorithm Analysis Results: {parsed_algorithm_results}
         """
 

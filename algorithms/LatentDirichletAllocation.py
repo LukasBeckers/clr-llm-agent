@@ -87,7 +87,7 @@ class LatentDirichletAllocation(IAlgorithm):
         self.k = k
         self.alpha = alpha
         self.eta = eta
-        self.seed = 42
+        self.seed = seed
         self.transform = transform
 
         # Setting the training parameters
@@ -129,7 +129,8 @@ class LatentDirichletAllocation(IAlgorithm):
             # Convert list of tuples into a dictionary for WordCloud
             word_freq = {word: prob for word, prob in words}
             # Generate word cloud
-            wordcloud = WordCloud(width=400, height=400, background_color='white').generate_from_frequencies(word_freq)
+            wordcloud = WordCloud(width=400,
+                                  height=400, background_color='white').generate_from_frequencies(word_freq)
             # Plot word cloud
             ax = axes[i]
             ax.imshow(wordcloud, interpolation='bilinear')
@@ -210,7 +211,7 @@ class LatentDirichletAllocation(IAlgorithm):
                 k=k,
                 alpha=self.alpha,
                 eta=self.eta,
-                # seed=self.seed,
+                seed=self.seed,
                 transform=self.transform,
             )
             for document in documents:

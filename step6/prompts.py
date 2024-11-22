@@ -21,5 +21,4 @@ image.
 
 The linespacing should be 1.5
 
-The report should be around 15000 words long. So really really really long!
 """
