@@ -18,7 +18,7 @@ from step6.LaTeXPaperGenerator import LaTeXPaperGenerator
 from tools.DataLoader import DataLoader
 from tools.TextNormalizer import TextNormalizer
 from tools.BasicDatasetAnalyzer import BasicDatasetAnalyzer
-from agents.LLMs import gpt_4o_mini, gpt_4o
+from agents.LLMs import gpt_4o_mini, gpt_4o, o1_mini	
 from dotenv import load_dotenv
 import os
 import pickle as pk
@@ -26,6 +26,7 @@ import pickle as pk
 load_dotenv()
 email = os.getenv("EMAIL_ADDRESS")
 base_model = gpt_4o
+advanced_model = o1_mini
 algorithms_selector_prompt = algorithms_selector_prompt_v2
 
 
@@ -556,7 +557,7 @@ class App(tk.Tk):
         parsed_results = results_parser(results=self.results)
 
         # Analyze the Results
-        results_analyzer = ResultsAnalyzer(llm=base_model)
+        results_analyzer = ResultsAnalyzer(llm=advanced_model)
 
         # Not nice
 
@@ -601,7 +602,7 @@ class App(tk.Tk):
         self.update()
 
         # Generate PDF
-        pdf_generator = LaTeXPaperGenerator(base_model)
+        pdf_generator = LaTeXPaperGenerator(advanced_model)
         pdf_generator(analysis_results=self.analysis_result)
 
         text_area.insert(tk.END, f"PDF Generated Successfully.\n", "result")
