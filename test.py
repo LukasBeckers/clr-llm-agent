@@ -3,31 +3,14 @@ from algorithms.DynamicTopicModeling import DynamicTopicModeling
 import pickle as pk
 import os
 import time
+from agents.TextGenerator import TextGenerator
+from agents.LLMs import create_llm
 
 
-with open(os.path.join("temp", "dataset"), "rb") as f:
-    dataset = pk.load(f)
 
-text_normalizer = TextNormalizer()
+if __name__ == "__main__":  
+    test_llm = create_llm("o1-mini")
+    text_gen = TextGenerator("", llm=test_llm)
 
-for data_point in dataset[:]:
-        try:
-            data_point["AbstractNormalized"] = text_normalizer(
-                data_point["Abstract"]
-            )
-        except KeyError:
-            dataset.remove(data_point)
+    print(text_gen.generate("HI!"))
 
-algo = DynamicTopicModeling(k=6)
-
-start_time = time.time()
-results = algo(dataset)
-end_time = time.time() - start_time
-
-print("Algorithm Run took: ", end_time, "s ")
-print("Results", results)
-print(len(results["Topic Words"]))
-
-for x in results["Topic Words"].values():
-    print(len(x))
-    print(x)
