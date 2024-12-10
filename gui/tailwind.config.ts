@@ -31,8 +31,15 @@ export default {
         background_main: "rgba(194, 192, 255, 0.5)",
         background_style_color_start_page: "#FFC0EA",
         inputfield_main_color: "#C2C0FF",
-        input_field_items: "#353535",
+        inputfield_items: "#353535",
+        inputfield_text_color: "#0F0E4A",
+        reasoning_bg: "#FFC0F1",
+        reasoning_label: "#7D6478",
+        reasoning_text: "#410033"
       },
+      rotate: {
+        31: "31deg",
+      }
     },
   },
   variants: {
