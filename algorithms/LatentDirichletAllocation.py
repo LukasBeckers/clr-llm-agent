@@ -193,16 +193,30 @@ class LatentDirichletAllocation(IAlgorithm):
 
     def _find_k(self, documents: List[Dict[str, Any]]) -> Tuple[int, LDAModel]:
         """
-        Trains models with 2-5 topics and identifies the best fit via knee
-        of the perplexity curve.
+        Finds the optimal number of topics (k) by training models with different k
+        values and selecting the one with the highest coherence score.
 
-        !!! Does not work yet!!!
+        Args:
+            documents (List[Dict[str, Any]]): The list of documents to analyze.
+
+        Returns:
+            Tuple[int, LDAModel]: The optimal number of topics and the trained model.
         """
+        # Prepare the corpus
+        corpus = [document["AbstractNormalized"] for document in documents]
 
-        test_k = [x for x in range(2, 15)]
-        perplexities = []
+        # Define the range of k values to test
+        min_k = 2
+        max_k = 20
+        ks = range(min_k, max_k + 1)
+
+        coherence_scores = []
         models = []
-        for k in test_k:
+
+        for k in ks:
+            print(f"Training model with k = {k}")
+
+            # Create a model with the current k
             model = LDAModel(
                 tw=self.tw,
                 min_cf=self.min_cf,
@@ -214,10 +228,12 @@ class LatentDirichletAllocation(IAlgorithm):
                 seed=self.seed,
                 transform=self.transform,
             )
-            for document in documents:
-                words = document["AbstractNormalized"]
+
+            # Add documents to the model
+            for words in corpus:
                 model.add_doc(words)
 
+            # Train the model
             model.train(
                 iter=self.iter,
                 workers=self.workers,
@@ -226,39 +242,25 @@ class LatentDirichletAllocation(IAlgorithm):
                 show_progress=self.show_progress,
             )
 
-            print(k, "Perplexity", model.perplexity)
-            perplexities.append(model.perplexity)
+            # Compute the coherence score using the 'c_v' metric
+            cm = tp.coherence.CoherenceModel(model=model, coherence='c_v')
+            coherence = cm.get_score()
+
+            coherence_scores.append(coherence)
             models.append(model)
 
-        best_k = KneeLocator(
-            test_k, perplexities, curve="convex", direction="decreasing"
-        ).knee
+            print(f"Coherence Score for k = {k}: {coherence}")
 
-        # Plotting the Perplexity
-        fig, ax = plt.subplots()
+        # Find the k with the maximum coherence score
+        max_coherence = max(coherence_scores)
+        best_index = coherence_scores.index(max_coherence)
+        best_k = ks[best_index]
+        best_model = models[best_index]
 
-        ax.set_title("Perplexity Per Number of Topics")
-        ax.set_xticks([x for x in test_k[::10]])
-        ax.set_xticklabels([x for x in test_k[::10]])
-        ax.set_xlabel("Number of Topics")
-        ax.set_ylabel("Perplexity")
-
-        ax.plot(test_k, perplexities)
-
-        # Adding a Marker for the Knee
-        ax.plot(
-            test_k[best_k : best_k + 1],
-            perplexities[best_k : best_k + 1],
-            marker="o",
-            color="red",
-        )
-
-        fig.savefig(
-            os.path.join("visualizations", "PerplexityPerNumberOfTopics.png")
-        )
-
-        return best_k, models[best_k]
-
+        print(f"Optimal number of topics (k): {best_k} with Coherence Score: {max_coherence}")
+        
+        return best_k, best_model
+            
     def __call__(
         self, documents: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
