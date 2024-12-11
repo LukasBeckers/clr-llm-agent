@@ -46,7 +46,7 @@ const InputField: React.FC<InputFieldProps> = ({
   };
 
   return (
-    <div className="relative flex font-sans w-[768px]">
+    <div className="relative subpixel-antialiased flex font-sans w-[768px]">
       <textarea
         ref={textareaRef}
         onInput={handleInput}

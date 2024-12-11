@@ -1,15 +1,26 @@
-// components/ContentsStartPage1.tsx 
+// components/ContentsStartPage1.tsx
 
 import React from "react";
 import InputField from "./InputField";
 import Image from "next/image";
 
-interface ContentsStartPage1Props {}
+interface ContentsStartPage1Props {
+  onFirstMessageCommit: (message: string) => void;
+}
 
-const ContentsStartPage1: React.FC<ContentsStartPage1Props> = () => {
+const ContentsStartPage1: React.FC<ContentsStartPage1Props> = ({
+  onFirstMessageCommit,
+}) => {
+  const handleConfirm = (text: string) => {
+    // When a message is confirmed, notify Mainwindow
+    onFirstMessageCommit(text);
+  };
+
   return (
     <div className="flex flex-col items-center">
-    {/*header*/}
+      {/*spacer*/}
+      <div className="h-full"></div>
+      {/*header*/}
       <div className="flex items-center font-sans text-[32px] font-bold">
         <Image
           src="CLR Agent.svg"
@@ -21,9 +32,14 @@ const ContentsStartPage1: React.FC<ContentsStartPage1Props> = () => {
         What is your research question?
       </div>
       {/*spacer*/}
-
       <div className="h-[48px]"></div>
-      <InputField placeholder="Write your research question!"></InputField>
+
+      <InputField
+        placeholder="Write your research question!"
+        onConfirm={handleConfirm}
+      />
+      {/*spacer*/}
+      <div className="h-full"></div>
     </div>
   );
 };

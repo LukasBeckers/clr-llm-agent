@@ -35,7 +35,13 @@ export default {
         inputfield_text_color: "#0F0E4A",
         reasoning_bg: "#FFC0F1",
         reasoning_label: "#7D6478",
-        reasoning_text: "#410033"
+        reasoning_text: "#410033",
+        result_bg: "#C3FFBB",
+        result_label: "#7D6478",
+        result_text: "#D9D9D9",
+        user_bg: "#C2C0FF",
+        user_label: "#5B5B5B",
+        user_text: "#D9D9D9"
       },
       rotate: {
         31: "31deg",

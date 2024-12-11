@@ -1,15 +1,15 @@
-// components/ReasoningText.tsx
+// components/ResultMessage.tsx
 import React, { useState, forwardRef, useImperativeHandle } from "react";
 
-interface ReasoningTextProps {
+interface ResultMessageProps {
   text: string; // initial text to be displayed
 }
 
-export interface ReasoningTextHandle {
+export interface ResultMessageHandle {
   addText: (text: string) => void; // method to append new text
 }
 
-const ReasoningText = forwardRef<ReasoningTextHandle, ReasoningTextProps>(
+const ResultMessage = forwardRef<ResultMessageHandle, ResultMessageProps>(
   ({ text }, ref) => {
     const [currentText, setCurrentText] = useState<string>(text);
 
@@ -22,17 +22,17 @@ const ReasoningText = forwardRef<ReasoningTextHandle, ReasoningTextProps>(
 
     return (
       <div
-        className="relative bg-reasoning_bg rounded-[16px]  max-w-[867px] min-w-[200px] w-auto pb-4"
+        className="relative bg-result_bg rounded-[16px]  max-w-[867px] min-w-[200px] w-auto pb-4"
         style={{ wordWrap: "break-word" }}
       >
-        {/* "Reasoning" Label */}
+        {/* "Results" Label */}
         <div
-          className="absolute subpixel-antialiased top-2 right-5 font-sans text-reasoning_label text-base font-bold"
+          className="absolute subpixel-antialiased top-2 right-5 font-sans text-result_label text-base font-bold"
         >
-          Reasoning
+          Results
         </div>
 
-        {/* Display the entire reasoning text */}
+        {/* Display the entire result text */}
         <div className="mt-9 ml-8 mr-4 font-sans font-normal subpixel-antialiased text-base text-gray-700">
           {currentText}
         </div>
@@ -41,4 +41,4 @@ const ReasoningText = forwardRef<ReasoningTextHandle, ReasoningTextProps>(
   }
 );
 
-export default ReasoningText;
+export default ResultMessage;

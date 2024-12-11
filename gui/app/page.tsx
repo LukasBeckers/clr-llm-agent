@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import Mainwindow from "./components/StartWindow";
+import Mainwindow from "./components/MainWindow";
 import Sidebar from "./components/Sidebar";
 
 export default function Home() {
