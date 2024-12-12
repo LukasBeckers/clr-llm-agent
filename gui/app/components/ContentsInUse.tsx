@@ -7,11 +7,6 @@ import InputField from "./InputField";
 import Image from "next/image";
 // Removed unused import: import Result from "postcss/lib/result";
 
-// Mock function to check for existing chat history
-async function checkChatHistory() {
-  // In a real app, fetch or load local storage / backend data here
-  return [];
-}
 
 interface ContentsInUseProps {
   messages: { type: "user" | "reasoning" | "result"; text: string }[];
@@ -55,6 +50,11 @@ const ContentsInUse: React.FC<ContentsInUseProps> = ({
     index: number
   ) => {
     if (message.type === "user") {
+
+      if (!message.text || message.text.trim() === "") {
+        return null;
+      }
+
       let style: React.CSSProperties = {};
       let containerClasses = "relative flex justify-end";
 

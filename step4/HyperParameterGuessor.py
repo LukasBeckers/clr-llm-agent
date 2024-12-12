@@ -1,19 +1,21 @@
 # hyperparameter_guessor.py
 
-from langchain.chains import LLMChain
+import os
+from typing import Optional, Dict, Any
+from dotenv import load_dotenv
+from openai import OpenAI
 from langchain.prompts import PromptTemplate
-from langchain_community.chat_models import ChatOpenAI
-import re
-from typing import Tuple, Optional, Dict, Any
-from agents.utils import json_to_dict  
 from agents.ReasoningTextGenerator import ReasoningTextGenerator
 
+# Assuming json_to_dict is defined in agents.utils
+from agents.utils import json_to_dict  
 
 class HyperParameterGuessor(ReasoningTextGenerator):
     def __init__(
         self,
         prompt_explanation: str,
-        llm: ChatOpenAI,
+        llm: str = "gpt-4o-mini",  # possible options: "gpt-4o-mini", "gpt-4", "gpt-4o", "o1-mini"
+        temperature: float = 1.0,
         start_answer_token: str = "<START_HYPERPARAMETERS>",
         stop_answer_token: str = "<STOP_HYPERPARAMETERS>",
     ):
@@ -23,13 +25,15 @@ class HyperParameterGuessor(ReasoningTextGenerator):
 
         Args:
             prompt_explanation (str): A detailed explanation of the task for the LLM.
-            llm (ChatOpenAI): An instance of the ChatOpenAI language model.
+            llm (str): The language model to use.
+            temperature (float): The temperature parameter for model output creativity.
             start_answer_token (str): Token indicating the start of the final hyperparameters.
             stop_answer_token (str): Token indicating the end of the final hyperparameters.
         """
         super().__init__(
             prompt_explanation=prompt_explanation,
             llm=llm,
+            temperature=temperature,
             start_answer_token=start_answer_token,
             stop_answer_token=stop_answer_token,
         )
@@ -40,7 +44,7 @@ class HyperParameterGuessor(ReasoningTextGenerator):
         research_question_class: str,
         basic_dataset_evaluation: str,
         critic: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> str:
         """
         Generates hyperparameters based on the provided research question, its classification,
         and the basic dataset evaluation using the LLM, along with reasoning steps.
@@ -52,38 +56,28 @@ class HyperParameterGuessor(ReasoningTextGenerator):
             critic (Optional[str]): Optional critic or additional context.
 
         Returns:
-            Dict[str, Any]: A dictionary containing the hyper_parameters and reasoning_steps.
+            str: The raw response from the LLM containing reasoning and generated hyperparameters.
         """
         # Construct the input prompt for the ReasoningTextGenerator
         if critic:
             input_text = f"""
-            Research Question: "{research_question}"
-            Research Question Classification: {research_question_class}
-            Critic: "{critic}"
-            Dataset Basic Evaluation: {basic_dataset_evaluation}
+Research Question: "{research_question}"
+Research Question Classification: {research_question_class}
+Critic: "{critic}"
+Dataset Basic Evaluation: {basic_dataset_evaluation}
 
-            Please generate a set of hyperparameters for the specified algorithm based on the Research Question and the basic evaluation of the Dataset.
-            """
+Please generate a set of hyperparameters for the specified algorithm based on the Research Question and the basic evaluation of the Dataset.
+"""
         else:
             input_text = f"""
-            Research Question: "{research_question}"
-            Research Question Classification: {research_question_class}
-            Dataset Basic Evaluation: {basic_dataset_evaluation}
+Research Question: "{research_question}"
+Research Question Classification: {research_question_class}"
+Dataset Basic Evaluation: {basic_dataset_evaluation}
 
-
-            Please generate a set of hyperparameters for the specified algorithm based on the Research Question and the basic evaluation of the Dataset.
-            """
+Please generate a set of hyperparameters for the specified algorithm based on the Research Question and the basic evaluation of the Dataset.
+"""
 
         # Generate hyperparameters and reasoning steps
-        hyperparameters_raw, reasoning_steps = self.generate(input_text)
+        response = self.generate(input_text, critique=critic)
 
-        # Convert the JSON output to a dictionary
-        hyperparameters_dict = json_to_dict(hyperparameters_raw)
-
-        if hyperparameters_dict is None:
-            raise ValueError("Failed to parse hyperparameters JSON.")
-
-        return {
-            "hyper_parameters": hyperparameters_dict.get("hyper_parameters", {}),
-            "reasoning_steps": reasoning_steps
-        }
+        return response

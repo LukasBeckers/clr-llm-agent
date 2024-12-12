@@ -30,7 +30,7 @@ const Sidebar: React.FC<SidebarProps> = ({ children, onStepChange }) => {
     {
       id: 0,
       isActive: true,
-      isCompleted: true,
+      isCompleted: false,
       isSelectable: true,
       lock_closed: "Lock (closed).svg",
       lock_opened: "Lock (open) gray.svg",
@@ -43,7 +43,7 @@ const Sidebar: React.FC<SidebarProps> = ({ children, onStepChange }) => {
       id: 1,
       isActive: false,
       isCompleted: false,
-      isSelectable: true,
+      isSelectable: false,
       lock_closed: "Lock (closed).svg",
       lock_opened: "Lock (open) gray.svg",
       lock_opened_white: "Lock (open) white.svg",
