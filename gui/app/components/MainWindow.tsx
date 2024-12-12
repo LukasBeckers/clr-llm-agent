@@ -5,10 +5,10 @@ import ContentsStartPage1 from "./ContentsStartPage1";
 import ContentsInUse from "./ContentsInUse";
 
 interface MainwindowProps {
-  styling_color: string;
+  activeStep: number;
 }
 
-const Mainwindow: React.FC<MainwindowProps> = ({ styling_color }) => {
+const Mainwindow: React.FC<MainwindowProps> = ({ activeStep }) => {
   const [initialUserMessage, setInitialUserMessage] = useState<string | null>(
     null
   );
@@ -16,6 +16,40 @@ const Mainwindow: React.FC<MainwindowProps> = ({ styling_color }) => {
   const handleFirstMessageCommit = (message: string) => {
     // Store the first committed user message and trigger a re-render
     setInitialUserMessage(message);
+    setStepMessages((prev) => ({
+      ...prev,
+      0: {
+        ...prev[0],
+        messages: [...prev[0].messages, { type: "user", text: message }],
+      },
+    }));
+  };
+
+  const [stepMessages, setStepMessages] = useState<{
+    [stepId: number]: {
+      initialUserMessage?: string;
+      messages: { type: "user" | "reasoning" | "result"; text: string }[];
+    };
+  }>({
+    0: { messages: [] },
+    1: { messages: [] },
+    2: { messages: [] },
+    3: { messages: [] },
+    4: { messages: [] },
+    5: { messages: [] },
+  });
+
+  const addMessageToStep = (
+    stepId: number,
+    newMessage: { type: string; text: string }
+  ) => {
+    setStepMessages((prev) => ({
+      ...prev,
+      [stepId]: {
+        ...prev[stepId],
+        messages: [...prev[stepId].messages, newMessage],
+      },
+    }));
   };
 
   return (
@@ -35,17 +69,24 @@ const Mainwindow: React.FC<MainwindowProps> = ({ styling_color }) => {
       ></div>
 
       {/* Mainwindow Content */}
-      <div className={`relative z-10 flex ${initialUserMessage === null ? "justify-center items-center h-screen" : "justify-end items-start"}`}>
+      <div
+        className={`relative z-10 flex ${
+          initialUserMessage === null
+            ? "justify-center items-center h-screen"
+            : "justify-end items-start"
+        }`}
+      >
         {initialUserMessage === null ? (
           // If no message has been committed yet, show the start page
           <ContentsStartPage1 onFirstMessageCommit={handleFirstMessageCommit} />
         ) : (
           // Once the first message is committed, show the ContentsInUse component
           <ContentsInUse
-            initialUserMessage={initialUserMessage}
+            messages={stepMessages[activeStep]?.messages || []}
             onUserMessage={(text) => {
               console.log("New user message:", text);
             }}
+            addMessage={(newMessage) => addMessageToStep(activeStep, newMessage)}
           />
         )}
       </div>

@@ -7,7 +7,7 @@ interface UserMessageProps {
 const UserMessage: React.FC<UserMessageProps> = ({ text }) => {
   return (
     <div
-      className="relative subpixel-antialiased bg-user_bg rounded-[16px] max-w-[867px] w-auto pb-4 min-w-[162px]"
+      className="relative subpixel-antialiased bg-user_bg rounded-[16px] max-w-[867px] w-auto pb-4 min-w-[200px]"
       // Ensure a minimum width to fit the label and padding
       style={{ wordWrap: "break-word" }}
     >

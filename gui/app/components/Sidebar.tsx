@@ -5,6 +5,7 @@ import SettingsElement from "./Settings";
 
 interface SidebarProps {
   children?: React.ReactNode;
+  onStepChange: (stepId: number) => void;
 }
 
 // Define the type for step items
@@ -23,7 +24,7 @@ interface StepItem {
   isSettings?: boolean; // Flag to identify SettingsElement
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ children }) => {
+const Sidebar: React.FC<SidebarProps> = ({ children, onStepChange }) => {
   // Initial steps data
   const initialSteps: StepItem[] = [
     {
@@ -110,27 +111,21 @@ const Sidebar: React.FC<SidebarProps> = ({ children }) => {
   // State to manage steps
   const [steps, setSteps] = useState<StepItem[]>(initialSteps);
 
-  // Updated onToggle function
   const handleStepToggle = (id: number) => {
     const clickedStep = steps.find((step) => step.id === id);
     const isSelectable = clickedStep?.isSelectable !== false;
-    if (!isSelectable) {
-      return;
-    }
+    if (!isSelectable) return;
+
     setSteps((prevSteps) =>
-      prevSteps.map((step) => {
-        // Assume isSelectable is true if undefined
-        const isSelectable = step.isSelectable !== false;
-        if (step.id === id && isSelectable) {
-          // Set clicked step to active
-          return { ...step, isActive: true };
-        } else {
-          // Set all other steps to inactive
-          return { ...step, isActive: false };
-        }
-      })
+      prevSteps.map((step) =>
+        step.id === id ? { ...step, isActive: true } : { ...step, isActive: false }
+      )
     );
+
+    // Call the parent callback to inform about step change
+    onStepChange(id);
   };
+  
 
   return (
     <div className="sidebar">

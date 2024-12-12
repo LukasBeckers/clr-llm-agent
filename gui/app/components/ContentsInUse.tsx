@@ -14,32 +14,22 @@ async function checkChatHistory() {
 }
 
 interface ContentsInUseProps {
-  initialUserMessage: string; // The first message from the user that triggered this component
+  messages: { type: "user" | "reasoning" | "result"; text: string }[];
   onUserMessage: (text: string) => void; // Callback when new user messages are confirmed
+  addMessage: (message: {
+    type: "user" | "reasoning" | "result";
+    text: string;
+  }) => void;
 }
 
 const ContentsInUse: React.FC<ContentsInUseProps> = ({
-  initialUserMessage,
+  messages,
   onUserMessage,
+  addMessage
 }) => {
   // State to hold chat messages
   // Store objects with type: 'user' | 'reasoning' | 'result'
   // and their corresponding text.
-  const [messages, setMessages] = useState<
-    { type: "user" | "reasoning" | "result"; text: string }[]
-  >([
-    { type: "user", text: initialUserMessage },
-    {
-      type: "reasoning",
-      text: `Reasoning for Question Classification:
-To classify the text "How has the research concerning the glymphatic system changed over time?" into one of the categories, we need to analyze the nature and intent of the question based on the definitions provided.
-
-1. **Explicating**: This category involves questions that aim to clarify or describe existing concepts or phenomena. The question at hand is not primarily seeking to clarify or describe the glymphatic system itself, but rather how research about it has evolved.
-
-2. **Envisioning**: This category is about developing new theories or exploring future possibilities. The question does not aim to develop new theories or explore future scenarios; it is retrospective, focusing on past research developments.`,
-    },
-    { type: "result", text: `Research Question Classification: Explicating` },
-  ]);
 
   // Container ref for scrolling
   const containerRef = useRef<HTMLDivElement>(null);
@@ -48,7 +38,7 @@ To classify the text "How has the research concerning the glymphatic system chan
     // Callback
     onUserMessage(text);
     // Add User Message to the messages array
-    setMessages((prev) => [...prev, { type: "user", text: text }]);
+    addMessage({ type: "user", text: text });
   };
 
   useEffect(() => {
@@ -70,10 +60,10 @@ To classify the text "How has the research concerning the glymphatic system chan
 
       if (index === 0) {
         // First user message
-        style = { marginTop: "72px", marginRight: "72px" };
+        style = { marginTop: "72px", marginRight: "72px", marginLeft: "144px" };
       } else {
         // Subsequent user messages
-        style = { marginTop: "16px", marginRight: "72px" };
+        style = { marginTop: "16px", marginRight: "72px", marginLeft: "144px" };
       }
 
       return (
@@ -109,7 +99,7 @@ To classify the text "How has the research concerning the glymphatic system chan
   };
 
   return (
-    <div className="relative flex-1 min-h-screen bg-background_main overflow-hidden">
+    <div className="relative flex-1 h-screen bg-background_main overflow-hidden">
       {/* Main content area with scrollable messages */}
       <div
         className="relative z-10 h-screen flex flex-col overflow-auto mb-[14px] pb-[400px]"

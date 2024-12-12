@@ -1,18 +1,17 @@
 "use client";
 
+import { useState } from "react";
 import React from "react";
 import Mainwindow from "./components/MainWindow";
 import Sidebar from "./components/Sidebar";
 
 export default function Home() {
-  const handleClick = () => {
-    alert("Button is Clicked");
-  };
+  const [activeStep, setActiveStep] = useState(0);
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar></Sidebar>
-      <Mainwindow styling_color="background_style_color_start_page"></Mainwindow>
+      <Sidebar onStepChange={setActiveStep}></Sidebar>
+      <Mainwindow activeStep={activeStep}></Mainwindow>
     </div>
   );
 }
