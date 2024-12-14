@@ -21,6 +21,9 @@ from step6.prompts import latex_paper_prompt
 from agents.ReasoningResponseParser import ReasoningResponseParser
 from agents.utils import json_to_dict
 
+from fastapi.middleware.cors import CORSMiddleware
+
+
 from dotenv import load_dotenv
 import os
 import pickle as pk
@@ -34,6 +37,9 @@ from uuid import uuid4
 import uuid
 from typing import List, Callable, Tuple
 from pydantic import BaseModel
+
+
+
 
 load_dotenv()
 
@@ -867,6 +873,7 @@ class API:
             # first step is always allowed
             if i == 0:
                 allowed_steps[i] = True
+        
             if i == len(allowed_steps) - 1:
                 break  # last step
 
@@ -883,7 +890,7 @@ class API:
         for i, step in self.steps.items():
             step_states[i]["finished"] = step.finished
 
-        return json.dumps(step_states)
+        return step_states
 
     async def upload_user_message(self, user_message: str, step: int):
 
@@ -960,6 +967,15 @@ class UserMessage(BaseModel):
 
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # or ["*"] for testing
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 api = API(llm=base_model)
 
 
