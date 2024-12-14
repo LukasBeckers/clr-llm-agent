@@ -32,7 +32,6 @@ class ReasoningTextGenerator:
         self.prompt_template = PromptTemplate(
             input_variables=["input_text", "critique"],
             template=f"""
-{self.prompt_explanation}
 
 Critique of previous attempt by the user, take this seriously: 
 "{{critique}}"
@@ -60,10 +59,13 @@ Generated Text:
         Returns:
             The raw streaming response from the OpenAI API.
         """
+
         prompt = self.prompt_template.format(
             input_text=input_text,
             critique=critique
         )
+
+        prompt = self.prompt_explanation + prompt
 
         response = self.client.chat.completions.create(
             model=self.llm,

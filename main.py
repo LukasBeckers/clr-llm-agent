@@ -9,7 +9,10 @@ from step2.ReasoningSearchQueryGenerator import ReasoningSearchQueryGenerator
 from step3.AlgorithmsSelector import AlgorithmsSelector
 from step3.prompts import algorithms_selector_prompt_v2
 from step4.HyperParameterGuessor import HyperParameterGuessor
-from step4.prompts import hyperparamter_selection_prompts
+from step4.prompts import (
+    hyperparamter_selection_prompts,
+    multi_algorithm_prompt,
+)
 from step4.ResultsParser import ResultsParser
 from step5.ResultsAnalyzer import ResultsAnalyzer
 from step6.LaTeXPaperGenerator import LaTeXPaperGenerator
@@ -54,6 +57,7 @@ if __name__ == "__main__":
             if token is None:
                 break
             token_type = answere_parser(token)
+            if not token_type: break
             print(token, end="")
 
         reasoning_rq = answere_parser.reasoning
@@ -74,16 +78,15 @@ if __name__ == "__main__":
     critique = "First attempt so no critique"
     # Generating search-strings
     pubmed_search_string_generator = ReasoningSearchQueryGenerator(
-        base_model,
-        temperature=0
+        base_model, temperature=0
     )
     answere_parser = ReasoningResponseParser(
-    start_answer_token=pubmed_search_string_generator.start_answer_token,
-    stop_answer_token=pubmed_search_string_generator.stop_answer_token,
+        start_answer_token=pubmed_search_string_generator.start_answer_token,
+        stop_answer_token=pubmed_search_string_generator.stop_answer_token,
     )
 
     while 1:
-        
+        answere_parser.reset()
         response = pubmed_search_string_generator(
             research_question=research_question,
             classification_result=rq_class,
@@ -95,16 +98,19 @@ if __name__ == "__main__":
             if token is None:
                 break
             token_type = answere_parser(token)
+            if not token_type: break
             print(token, end="")
 
         reasoning = answere_parser.reasoning
         raw_search_strings = answere_parser.answer
 
-        try: 
+        try:
             search_strings = []
 
             for search_string_and_source in raw_search_strings.split("),"):
-                search_string, data_source = search_string_and_source.split(",")
+                search_string, data_source = search_string_and_source.split(
+                    ","
+                )
                 search_string = (
                     search_string.strip()
                     .strip("[()'']")
@@ -121,7 +127,7 @@ if __name__ == "__main__":
                     .strip("[()'']")
                     .strip("\n")
                 )
-        except Exception: 
+        except Exception:
             continue
 
         user_input = input(
@@ -133,7 +139,6 @@ if __name__ == "__main__":
 
         else:
             critique = f"Previous Answere to this task: {raw_search_strings}. \n User-Critique: {user_input}"
-
 
     # Downloading the datasets from the datasources
     data_loader = DataLoader(email=email)
@@ -179,12 +184,12 @@ if __name__ == "__main__":
     )
 
     answere_parser = ReasoningResponseParser(
-    start_answer_token=algorithm_selector.start_answer_token,
-    stop_answer_token=algorithm_selector.stop_answer_token,
+        start_answer_token=algorithm_selector.start_answer_token,
+        stop_answer_token=algorithm_selector.stop_answer_token,
     )
 
     critique = "First attempt so no critique"
-    while True: 
+    while True:
         answere_parser.reset()
         response = algorithm_selector(
             research_question,
@@ -197,6 +202,7 @@ if __name__ == "__main__":
             if token is None:
                 break
             token_type = answere_parser(token)
+            if not token_type: break
             print(token, end="")
 
         reasoning = answere_parser.reasoning
@@ -207,12 +213,11 @@ if __name__ == "__main__":
         )
 
         if user_input == "":
-          
+
             break
 
         else:
-            critique = f"Previous Answere to this task: {raw_search_strings}. \n User-Critique: {user_input}"
-
+            critique = f"Previous Answere to this task: {algorithms_raw}. \n User-Critique: {user_input}"
 
     selected_algorithms = []
     for algorithm in algorithms_raw.split(","):
@@ -220,58 +225,81 @@ if __name__ == "__main__":
         algorithm = algorithm.strip("'")
         selected_algorithms.append(algorithm)
 
-    print("Selected Algorithms", selected_algorithms)
+    print("Selected Algorithms", selected_algorithms, "Selected Algorithms")
     # Step 4
 
     print("Begin Step 4")
 
     # Calibrate the algorithms
-    hyper_parameter_guessors = { }
-    
+
+    hyper_parameter_guessor_prompt = """"""
+
     for algorithm_name in selected_algorithms:
-        try: 
-            hyper_parameter_guessors[algorithm_name] = HyperParameterGuessor(
-            prompt_explanation=hyperparamter_selection_prompts[algorithm_name],
-            llm=base_model,
-        )
+        try:
+            hyper_parameter_guessor_prompt += hyperparamter_selection_prompts[
+                algorithm_name
+            ]
         except KeyError:
             continue
-    
-    # Here is no critique possible yet. 
-    hyper_parameters = {
-        algorithm_name: hyper_parameter_guessor(
+
+    hyper_parameter_guessor_prompt += multi_algorithm_prompt
+
+    hyper_parameter_guessor = HyperParameterGuessor(
+        prompt_explanation=hyper_parameter_guessor_prompt,
+        llm=base_model,
+    )
+
+    answere_parser = ReasoningResponseParser(
+        start_answer_token=hyper_parameter_guessor.start_answer_token,
+        stop_answer_token=hyper_parameter_guessor.stop_answer_token,
+    )
+
+    critique = "First Attempt no citique yet."
+
+    while True:
+        answere_parser.reset()
+        response = hyper_parameter_guessor(
             research_question=research_question,
             research_question_class=rq_class,
             basic_dataset_evaluation=basic_dataset_evalutation,
+            critic=critique,
         )
-        for algorithm_name, hyper_parameter_guessor in hyper_parameter_guessors.items()
-    }
 
-    # Generate hyperparameters and reasoning steps
-    hyperparameters_raw, reasoning_steps = self.generate(input_text)
+        for chunk in response:
+            token = chunk.choices[0].delta.content
+            if token is None:
+                break
+            token_type = answere_parser(token)
+            if not token_type: break
+            print(token, end="")
 
-    # Convert the JSON output to a dictionary
-    hyperparameters_dict = json_to_dict(hyperparameters_raw)
+        reasoning = answere_parser.reasoning
+        hyperparameters_raw = answere_parser.answer
 
-    if hyperparameters_dict is None:
-        raise ValueError("Failed to parse hyperparameters JSON.")
+        # Convert the JSON output to a dictionary
+        hyperparameters_dict = json_to_dict(hyperparameters_raw)
 
-    return {
-        "hyper_parameters": hyperparameters_dict.get("hyper_parameters", {}),
-        "reasoning_steps": reasoning_steps
-    }
+        if hyperparameters_dict is None:
+            raise ValueError("Failed to parse hyperparameters JSON.")
 
-    # Just debugging remove this
-    hyper_parameters["DynamicTopicModeling"]["hyper_parameters"]["t"] = 10
-    hyper_parameters["DynamicTopicModeling"]["hyper_parameters"]["k"] = 5
-    hyper_parameters["DynamicTopicModeling"]["hyper_parameters"]["iter"] = 1000
-    #####
+        print(hyperparameters_dict)
+
+        user_input = input(
+            "Do you have any critique? if not commit an empty message"
+        )
+
+        if user_input == "":
+
+            break
+
+        else:
+            critique = f"Previous Answere to this task: {hyperparameters_raw}. \n User-Critique: {user_input}"
 
     calibrated_algorithms = {
         algorithm_name: algorithms[algorithm_name](
-            **guessing_results["hyper_parameters"]
+            **guessing_results
         )
-        for algorithm_name, guessing_results in hyper_parameters.items()
+        for algorithm_name, guessing_results in hyperparameters_dict.items()
     }
 
     # Perform the analysis
@@ -291,24 +319,47 @@ if __name__ == "__main__":
     results = results_parser(results=results)
 
     # Step5
-
+    print("Begin Step 5")
     # Analyze the Results
-    results_analyzer = ResultsAnalyzer(llm=gpt_4o)
+    results_analyzer = ResultsAnalyzer(llm=base_model)
 
-    analysis_result = results_analyzer(
-        research_question=research_question,
-        research_question_class=rq_class,
-        parsed_algorithm_results=results,
-        search_strings=search_strings,
-        basic_dataset_evaluation=basic_dataset_evalutation,
-    )
+    critique = "First Try so no critique"
 
-    print("ANALYSIS RESULTS", analysis_result)
+    while True: 
+        response = results_analyzer(
+            research_question=research_question,
+            research_question_class=rq_class,
+            parsed_algorithm_results=results,
+            search_strings=search_strings,
+            basic_dataset_evaluation=basic_dataset_evalutation,
+            critique=critique
+        )
+
+        for chunk in response:
+            token = chunk.choices[0].delta.content
+            if token is None:
+                break
+            token_type = answere_parser(token)
+            print(token, end="")
+
+        analysis_result = answere_parser.full_output
+
+        user_input = input(
+            "Do you have any critique? if not commit an empty message"
+        )
+
+        if user_input == "":
+
+            break
+
+        else:
+            critique = f"Previous Answere to this task: {analysis_result}. \n User-Critique: {user_input}"
+
 
     # Step6
 
     # Generate PDF
 
-    pdf_generator = LaTeXPaperGenerator(gpt_4o)
+    pdf_generator = LaTeXPaperGenerator(llm=base_model)
 
     pdf_generator(analysis_results=analysis_result)

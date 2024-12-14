@@ -1,311 +1,991 @@
-from openai import OpenAI
-
-
-from flask import Flask, request, Response, jsonify
-import os
-import pickle as pk
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
-email = os.getenv("EMAIL_ADDRESS")
-
-# Importing your existing logic (make sure these are in your PYTHONPATH)
-from step1.ReasoningResearchQuestionClassifier import ReasoningResearchQuestionClassifier
-from agents.ReasoningResponseParser import ReasoningResponseParser
-from step2.ReasoningSearchQueryGenerator import ReasoningSearchQueryGenerator
-from step3.AlgorithmsSelector import AlgorithmsSelector
+from algorithms import algorithms
+from step1.ReasoningResearchQuestionClassifier import (
+    ReasoningResearchQuestionClassifier,
+)
 from tools.DataLoader import DataLoader
 from tools.TextNormalizer import TextNormalizer
 from tools.BasicDatasetAnalyzer import BasicDatasetAnalyzer
+from step2.ReasoningSearchQueryGenerator import ReasoningSearchQueryGenerator
+from step3.AlgorithmsSelector import AlgorithmsSelector
 from step3.prompts import algorithms_selector_prompt_v2
+from step4.HyperParameterGuessor import HyperParameterGuessor
+from step4.prompts import (
+    hyperparamter_selection_prompts,
+    multi_algorithm_prompt,
+)
+from step4.ResultsParser import ResultsParser
+from step5.ResultsAnalyzer import ResultsAnalyzer
+from step6.LaTeXPaperGenerator import LaTeXPaperGenerator
+from step6.prompts import latex_paper_prompt
 
-# Your model settings
+from agents.ReasoningResponseParser import ReasoningResponseParser
+from agents.utils import json_to_dict
+
+from dotenv import load_dotenv
+import os
+import pickle as pk
+from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
+from typing import Generator
+import time
+import json
+from queue import Queue
+from uuid import uuid4
+import uuid
+from typing import List, Callable, Tuple
+from pydantic import BaseModel
+
+load_dotenv()
+
+email = os.getenv("EMAIL_ADDRESS")
+algorithms_selector_prompt = algorithms_selector_prompt_v2
 base_model = "gpt-4o"
 
-app = Flask(__name__)
 
-# Global session state
-session_state = {
-    "current_step": 0,  # current step 0=step1, 1=step2, 2=step3
-    "phase": None,      # 'generation' or 'waiting_for_critique'
-    "research_question": None,
-    "rq_class": None,
-    "reasoning_rq": None,
-    "critique": None,
-    "search_strings": None,
-    "dataset": None,
-    "basic_dataset_evaluation": None,
-    "basic_dataset_description": None,
-    "selected_algorithms": None,
-}
+class Message:
+    def __init__(
+        self,
+        words,
+        step: int,
+        type: str,
+        start_answer_token: str,
+        stop_answer_token: str,
+        callback: Callable = None,
+    ):
+        """
+        step = int 0-5 and type = "reasoning" or "result"
+        """
+        self.id = uuid4()
+        self.words = words
+        self.step = step
+        self.type = type
+        self.start_answer_token = start_answer_token
+        self.stop_answer_token = stop_answer_token
+        self.callback = callback
 
-# Initialize LLM classes
-research_question_classifier = ReasoningResearchQuestionClassifier(base_model)
-search_query_generator = ReasoningSearchQueryGenerator(base_model, temperature=0)
-algorithm_selector = AlgorithmsSelector(prompt_explanation=algorithms_selector_prompt_v2, llm=base_model)
-
-def stream_llm_response(response_iter, parser):
-    """Stream tokens from an OpenAI response. 
-       parser is a ReasoningResponseParser instance to separate reasoning/answer.
-    """
-    for chunk in response_iter:
-        token = chunk.choices[0].delta.content
-        if token is not None:
-            token_type = parser(token)
-            # You can format the stream as needed:
-            # For example, prefix token_type so frontend knows if it's reasoning or answer
-            yield f"{token_type.upper()}:{token}"
-
-@app.route("/api", methods=["POST"])
-def api_endpoint():
-    # The client sends JSON: {"step": int, "user_message": str}
-    req_data = request.get_json(force=True)
-    step = req_data.get("step")
-    user_message = req_data.get("user_message", "")
-
-    # Validate step
-    if step not in [0, 1, 2]:
-        return jsonify({"error": "Only steps 0 to 2 are implemented."}), 400
-
-    # Ensure steps are done in order
-    if step != session_state["current_step"]:
-        return jsonify({"error": f"Invalid step. Expected step {session_state['current_step']}."}), 400
-
-    # Handle the logic depending on step and phase
-    if step == 0:
-        # Step 1 logic from original code, but step=0 in API
-        return handle_step_0(user_message)
-    elif step == 1:
-        # Step 2 logic from original code
-        return handle_step_1(user_message)
-    elif step == 2:
-        # Step 3 logic from original code
-        return handle_step_2(user_message)
+    def to_json(self):
+        return json.dumps(
+            {
+                "id": str(self.id),
+                "step": self.step,
+                "type": self.type,
+                "start_answer_token": self.start_answer_token,
+                "stop_answer_token": self.stop_answer_token,
+            }
+        )
 
 
-def handle_step_0(user_message):
-    """
-    Step 0 (original Step 1):
-    - If phase is None or 'generation', we treat user_message as research question (if not already set).
-    - Run classification, stream tokens.
-    - Then wait for critique if needed.
-    - If already waiting for critique, use user_message as critique.
-    """
-    if session_state["phase"] is None:
-        # Initial entry into step 0
-        # user_message is the research question
-        session_state["research_question"] = user_message
-        session_state["critique"] = "First attempt so no critique"
-        session_state["phase"] = "generation"
-        return stream_step_0_classification()
+class Step_1:
+    def __init__(self, llm: str = "gpt-4o"):
+        self.step_id = 0
+        self.current_substep = 0
+        self.research_question_class = None
+        self.finished = False
+        self.research_question = ""
+        self.llm = llm
 
-    elif session_state["phase"] == "waiting_for_critique":
-        # We are waiting for critique
-        if user_message.strip() == "":
-            # No critique means we finalize step 0
-            session_state["current_step"] = 1  # move to next step
-            session_state["phase"] = None
-            return jsonify({"message": "Step 0 completed. Move to step 1."})
-        else:
-            # Apply critique and run classification again
-            session_state["critique"] = f"Previous Answer: {session_state['rq_class']}. User-Critique: {user_message}"
-            session_state["phase"] = "generation"
-            return stream_step_0_classification()
+    def __call__(self, message: str):
+        """
+        Makes the class instance callable to route the message to the correct sub-step
+        based on the current state of the step.
 
+        Parameters:
+        - message (str): The incoming message to process.
+        """
+        if self.current_substep == 0:
+            # Begin with the research_question; this is special for step 1
+            research_question = message
+            self.research_question = research_question
 
-def stream_step_0_classification():
-    # Run the research question classification
-    answere_parser = ReasoningResponseParser(
-        start_answer_token=research_question_classifier.start_answer_token,
-        stop_answer_token=research_question_classifier.stop_answer_token
-    )
-    response = research_question_classifier(
-        session_state["research_question"],
-        critique=session_state["critique"]
-    )
+            return self.substep_0(research_question)
 
-    def generate():
-        for token_data in response:
-            token = token_data.choices[0].delta.content
+        elif self.current_substep == 1:
+            # In this step, there is only one substep. If substep is one, it means that
+            # a message was committed to the step even though it is finished.
+
+            if message == "":
+                # Empty message is equal to a confirmation; nothing happens
+                return
+            else:
+                # Non-empty message is meant as critique, so the step is repeated.
+                self.finished = False
+                critique = (
+                    f"Previous Answer to this task: {self.research_question_class}. \n"
+                    f"User-Critique: {message}"
+                )
+                return self.substep_0(
+                    self.research_question, critique=critique
+                )
+
+    def substep_0(
+        self,
+        research_question: str,
+        critique: str = "First try so no critique",
+    ) -> Tuple[List[Message], callable]:
+        """
+        Handles the first substep by classifying the research question and parsing the response.
+
+        Parameters:
+        - research_question (str): The research question to classify.
+        - critique (str): Optional critique to refine the classification.
+        """
+        research_question_classifier = ReasoningResearchQuestionClassifier(
+            self.llm
+        )
+        self.start_answer_token = (
+            research_question_classifier.start_answer_token
+        )
+        self.stop_answer_token = research_question_classifier.stop_answer_token
+
+        # Classifying the research question
+        response = research_question_classifier(
+            research_question, critique=critique
+        )
+
+        message = Message(
+            words=response,
+            step=0,
+            type="reasoning",
+            start_answer_token=self.start_answer_token,
+            stop_answer_token=self.stop_answer_token,
+            callback=self._finish_answer,
+        )
+
+        return [message]
+
+    def _finish_answer(self, full_output: List[str]) -> List[Message]:
+
+        answer_parser = ReasoningResponseParser(
+            start_answer_token=self.start_answer_token,
+            stop_answer_token=self.stop_answer_token,
+        )
+
+        for token in full_output:
+
             if token is None:
                 break
-            token_type = answere_parser(token)
-            yield f"{token_type.upper()}:{token}"
+            token_type = answer_parser(token)
+            if not token_type:
+                break
 
-        # After streaming finishes:
-        session_state["reasoning_rq"] = answere_parser.reasoning
-        session_state["rq_class"] = answere_parser.answer
+        self.research_question_class = answer_parser.answer
 
-        # Now we wait for critique
-        session_state["phase"] = "waiting_for_critique"
-        yield "\nDONE:Classification complete. Please provide critique (empty if none)."
+        message = Message(
+            words=self.research_question_class,
+            step=0,
+            type="result",
+            start_answer_token=self.start_answer_token,
+            stop_answer_token=self.stop_answer_token,
+        )
 
-    return Response(generate(), mimetype='text/plain')
+        self.current_substep = 1
+        self.finished = True
+
+        return [message]
 
 
-def handle_step_1(user_message):
-    """
-    Step 1 (original Step 2):
-    Similar logic:
-    - If phase is None or 'generation', we run the search query generation.
-    - Then wait for critique.
-    - If waiting_for_critique and user_message empty means done, else incorporate critique and run again.
-    """
-    if session_state["phase"] is None:
-        # Initial entry into step 1
-        session_state["critique"] = "First attempt so no critique"
-        session_state["phase"] = "generation"
-        return stream_step_1_search_query()
+class Step_2:
+    def __init__(self, llm: str = "gpt-4o"):
+        """
+        Initializes Step_2 with the specified language model.
 
-    elif session_state["phase"] == "waiting_for_critique":
-        # We are waiting for critique
-        if user_message.strip() == "":
-            # No critique means we finalize step 1
-            session_state["current_step"] = 2  # move to next step
-            session_state["phase"] = None
-            return jsonify({"message": "Step 1 completed. Move to step 2."})
+        Args:
+            llm (str, optional): The base model to use. Defaults to "gpt-4o".
+        """
+        self.step_id = 1
+        self.current_substep = 0
+        self.research_question = ""
+        self.research_question_class = ""
+        self.llm = llm
+        self.critique = "First attempt so no critique"
+        self.search_strings = []
+        self.finished = False
+
+    def __call__(
+        self,
+        research_question: str,
+        research_question_class: str,
+        message: str,
+    ):
+        """
+        Makes the class instance callable to route the message to the correct sub-step
+        based on the current state of the step.
+
+        Args:
+            research_question (str): The research question to generate search queries for.
+            classification_result (str): The classification result of the research question.
+            message (str): The incoming message to process, typically a critique or confirmation.
+        """
+        # Update the internal state with the latest research question and classification result
+        self.research_question = research_question
+        self.research_question_class = research_question_class
+
+        # Update critique based on the incoming message
+        if message.strip() != "":
+            self.critique = f"Previous Answer to this task: {self.search_strings}. \nUser-Critique: {message}"
         else:
-            # Apply critique and run again
-            session_state["critique"] = f"Previous Answer: {session_state.get('search_strings','')}. User-Critique: {user_message}"
-            session_state["phase"] = "generation"
-            return stream_step_1_search_query()
+            self.critique = "No Critique"
 
+        # Route the message based on the current substep
+        if self.current_substep == 0:
+            # Begin the search string generation substep
+            return self.substep_0(self.critique)
+        elif self.current_substep == 1:
+            # Handle user critique after generating search strings in the last step
+            if message.strip() == "":
+                # Empty message signifies confirmation to proceed
+                self.finished = True
+                return
+            else:
+                # Non-empty message is treated as a critique; regenerate search strings
+                self.finished = False
+                return self.substep_0(self.critique)
+        else:
+            raise ValueError(f"Invalid substep state: {self.current_substep}")
 
-def stream_step_1_search_query():
-    answere_parser = ReasoningResponseParser(
-        start_answer_token=search_query_generator.start_answer_token,
-        stop_answer_token=search_query_generator.stop_answer_token
-    )
+    def substep_0(self, critique: str = "First attempt so no critique"):
+        """
+        Generates search strings based on the research question and classification result.
 
-    response = search_query_generator(
-        research_question=session_state["research_question"],
-        classification_result=session_state["rq_class"],
-        critic=session_state["critique"]
-    )
+        Args:
+            critique (str, optional): User critique to refine the search string generation.
+                                      Defaults to "First attempt so no critique".
+        """
+        # Initialize the search query generator
+        search_query_generator = ReasoningSearchQueryGenerator(
+            self.llm, temperature=0
+        )
 
-    def generate():
-        raw_search_strings = ""
-        for token_data in response:
-            token = token_data.choices[0].delta.content
+        # Initialize the response parser
+        answer_parser = ReasoningResponseParser(
+            start_answer_token=search_query_generator.start_answer_token,
+            stop_answer_token=search_query_generator.stop_answer_token,
+        )
+
+        # Generate search strings
+        response = search_query_generator(
+            research_question=self.research_question,
+            classification_result=self.research_question_class,
+            critic=critique,
+        )
+
+        # Parse the streaming response
+        for chunk in response:
+            token = chunk.choices[0].delta.content
             if token is None:
                 break
-            token_type = answere_parser(token)
-            yield f"{token_type.upper()}:{token}"
-        # Parsing after done
-        reasoning = answere_parser.reasoning
-        raw_search_strings = answere_parser.answer
+            token_type = answer_parser(token)
+            if not token_type:
+                break
+            print(token, end="")  # Optional: For debugging or logging purposes
 
-        # Attempt parsing search strings
+        raw_search_strings = answer_parser.answer
+
         try:
             search_strings = []
-            for s in raw_search_strings.split("),"):
-                ss, ds = s.split(",")
-                ss = ss.strip(" '()\"\n")
-                ds = ds.strip(" '()\"\n")
-                if ss and ds:
-                    search_strings.append((ss, ds))
-            session_state["search_strings"] = search_strings
-        except Exception:
-            # If parsing fails, we can handle it or ask for critique again
-            pass
 
-        # Now we wait for critique
-        session_state["phase"] = "waiting_for_critique"
-        yield "\nDONE:Search query generation complete. Please provide critique (empty if none)."
+            for search_string_and_source in raw_search_strings.split("),"):
+                parts = search_string_and_source.strip().rstrip(")").split(",")
+                if len(parts) != 2:
+                    continue  # Skip malformed entries
+                search_string, data_source = parts
+                search_string = search_string.strip().strip("['\"]").strip()
+                data_source = data_source.strip().strip("'\"").strip()
+                search_strings.append((search_string, data_source))
 
-    return Response(generate(), mimetype='text/plain')
+            self.search_strings = search_strings
+        except Exception as e:
+            print(f"\nError parsing search strings: {e}")
+            # Optionally, you can set a flag or raise an exception
+            return
+
+        self.current_substep = 1
+        self.finished = True
 
 
-def handle_step_2(user_message):
-    """
-    Step 2 (original Step 3):
-    - If phase is None or 'generation', we run the dataset analysis and algorithm selection.
-    - Then wait for critique.
-    - If waiting_for_critique and user_message empty means done, else incorporate critique and run again.
-    """
-    if session_state["phase"] is None:
-        # Initial entry into step 2
-        # Load dataset, normalize texts, basic analysis, algorithm selection
-        session_state["critique"] = "First attempt so no critique"
-        session_state["phase"] = "generation"
-        return stream_step_2_analysis_and_selection()
+class Step_3:
+    def __init__(self, llm: str = "gpt-4o"):
+        """
+        Initializes Step_3 with only the LLM parameter.
 
-    elif session_state["phase"] == "waiting_for_critique":
-        # waiting for critique
-        if user_message.strip() == "":
-            # No critique means we finalize step 2
-            session_state["current_step"] = 3  # move to next step (which isn't implemented yet)
-            session_state["phase"] = None
-            return jsonify({"message": "Step 2 completed. Move to step 3."})
+        Args:
+            llm (str, optional): The base model to use. Defaults to "gpt-4o".
+        """
+        self.step_id = 2
+        self.current_substep = 0
+        self.dataset = []
+        self.research_question = ""
+        self.classification_result = ""
+        self.basic_dataset_evaluation = ""
+        self.basic_dataset_description = ""
+        self.llm = llm
+        self.critique = "First attempt so no critique"
+        self.selected_algorithms = []
+        self.finished = False
+
+    def __call__(
+        self,
+        dataset: list = None,
+        research_question: str = "",
+        classification_result: str = "",
+        basic_dataset_evaluation: str = "",
+        basic_dataset_description: str = "",
+        message: str = "",
+    ):
+        """
+        Routes the incoming message to the appropriate substep based on the current state.
+
+        This method also initializes the necessary data if provided.
+
+        Args:
+            dataset (list, optional): The dataset to be analyzed.
+            research_question (str, optional): The research question.
+            classification_result (str, optional): The classification result from Step_1.
+            basic_dataset_evaluation (str, optional): Evaluation of the dataset from BasicDatasetAnalyzer.
+            basic_dataset_description (str, optional): Description of the dataset from BasicDatasetAnalyzer.
+            message (str, optional): The user input message, typically a critique or confirmation.
+        """
+        # Initialize data if provided
+        if dataset is not None:
+            self.dataset = dataset
+        if research_question:
+            self.research_question = research_question
+        if classification_result:
+            self.classification_result = classification_result
+        if basic_dataset_evaluation:
+            self.basic_dataset_evaluation = basic_dataset_evaluation
+        if basic_dataset_description:
+            self.basic_dataset_description = basic_dataset_description
+
+        # Update critique based on the message
+        if message.strip() != "":
+            self.critique = f"Previous Answer to this task: {self.selected_algorithms}. \nUser-Critique: {message}"
         else:
-            # Apply critique and run again (if needed)
-            session_state["critique"] = f"Previous Answer: {session_state.get('selected_algorithms','')}. User-Critique: {user_message}"
-            session_state["phase"] = "generation"
-            return stream_step_2_analysis_and_selection()
+            self.critique = "No Critique"
 
+        # Route to the appropriate substep
+        if self.current_substep == 0:
+            # Begin normalization and basic dataset analysis
+            self.substep_0(self.critique)
+        elif self.current_substep == 1:
+            # Begin algorithm selection
+            self.substep_1(self.critique)
+        elif self.current_substep == 2:
+            # Handle user critique after algorithm selection
+            if message.strip() == "":
+                # Empty message signifies confirmation to proceed
+                self.finished = True
+                print("Step 3 is finished.")
+                return
+            else:
+                # Non-empty message is treated as a critique; redo algorithm selection
+                self.finished = False
+                self.substep_1(self.critique)
+        else:
+            raise ValueError(f"Invalid substep state: {self.current_substep}")
 
-def stream_step_2_analysis_and_selection():
-    # Here we do dataset loading (already done?), normalization, basic analysis, algorithm selection
-    # This is a simplified version:
-    # In your original code you load dataset from file, we assume dataset is already available.
+    def substep_0(self, critique: str = "First attempt so no critique"):
+        """
+        Normalizes the text, removes data points without abstracts, and performs basic dataset analysis.
 
-    # Make sure dataset is loaded from "temp/dataset"
-    if session_state["dataset"] is None:
-        with open(os.path.join("temp", "dataset"), "rb") as f:
-            dataset = pk.load(f)
-        # Normalize text
+        Args:
+            critique (str, optional): User critique to refine the dataset analysis. Defaults to "First attempt so no critique".
+        """
+        print(
+            "Substep 3.0: Normalizing text and performing basic dataset analysis"
+        )
+
+        # Normalize the Text from the Dataset
         text_normalizer = TextNormalizer()
-        normalized_data = []
-        for data_point in dataset:
-            if "Abstract" in data_point:
-                data_point["AbstractNormalized"] = text_normalizer(data_point["Abstract"])
-                normalized_data.append(data_point)
-        dataset = normalized_data
-        session_state["dataset"] = dataset
 
-    # Basic dataset analysis
-    basic_dataset_analyzer = BasicDatasetAnalyzer(llm=base_model)
-    eval_res, description = basic_dataset_analyzer(session_state["dataset"])
-    session_state["basic_dataset_evaluation"] = eval_res
-    session_state["basic_dataset_description"] = description
+        # Create a copy of the dataset to avoid modifying the original during iteration
+        normalized_dataset = []
+        for data_point in self.dataset[:]:
+            try:
+                data_point["AbstractNormalized"] = text_normalizer(
+                    data_point["Abstract"]
+                )
+                normalized_dataset.append(data_point)
+            except KeyError:
+                # Removing datapoints that have no abstract
+                continue
 
-    # Algorithm selection
-    answere_parser = ReasoningResponseParser(
-        start_answer_token=algorithm_selector.start_answer_token,
-        stop_answer_token=algorithm_selector.stop_answer_token,
-    )
-    response = algorithm_selector(
-        session_state["research_question"],
-        session_state["rq_class"],
-        basic_dataset_evaluation=session_state["basic_dataset_evaluation"],
-    )
+        self.dataset = normalized_dataset
 
-    def generate():
-        algorithms_raw = ""
-        for token_data in response:
-            token = token_data.choices[0].delta.content
+        # Perform basic analysis of the dataset
+        basic_dataset_analyzer = BasicDatasetAnalyzer(llm=self.llm)
+
+        evaluation, description = basic_dataset_analyzer(self.dataset)
+
+        self.basic_dataset_evaluation = evaluation
+        self.basic_dataset_description = description
+
+        print("Dataset Evaluation:", self.basic_dataset_evaluation)
+        print("Dataset Description:", self.basic_dataset_description)
+
+        self.current_substep = 1  # Move to the next substep
+
+    def substep_1(self, critique: str = "First attempt so no critique"):
+        """
+        Selects algorithms based on the research question, classification, and dataset evaluation.
+
+        Args:
+            critique (str, optional): User critique to refine the algorithm selection. Defaults to "First attempt so no critique".
+        """
+        print(
+            "Substep 3.1: Selecting algorithms based on research question and dataset evaluation"
+        )
+
+        # Select the algorithms based on the research question, the classification
+        # of the research question and the basic dataset evaluation
+        algorithm_selector = AlgorithmsSelector(
+            prompt_explanation=algorithms_selector_prompt, llm=self.llm
+        )
+
+        answer_parser = ReasoningResponseParser(
+            start_answer_token=algorithm_selector.start_answer_token,
+            stop_answer_token=algorithm_selector.stop_answer_token,
+        )
+
+        answer_parser.reset()
+
+        response = algorithm_selector(
+            research_question=self.research_question,
+            rq_class=self.classification_result,
+            basic_dataset_evaluation=self.basic_dataset_evaluation,
+            critic=critique,
+        )
+
+        # Parse the streaming response
+        for chunk in response:
+            token = chunk.choices[0].delta.content
             if token is None:
                 break
-            token_type = answere_parser(token)
-            yield f"{token_type.upper()}:{token}"
+            token_type = answer_parser(token)
+            if not token_type:
+                break
+            print(token, end="")  # Optional: For debugging or logging purposes
 
-        reasoning = answere_parser.reasoning
-        algorithms_raw = answere_parser.answer
-        selected_algorithms = []
-        for a in algorithms_raw.split(","):
-            alg = a.strip(', "()[]`\n\t').strip("'")
-            if alg:
-                selected_algorithms.append(alg)
+        reasoning = answer_parser.reasoning
+        algorithms_raw = answer_parser.answer
 
-        session_state["selected_algorithms"] = selected_algorithms
+        # Process the algorithms
+        try:
+            selected_algorithms = []
+            for algorithm in algorithms_raw.split(","):
+                algorithm = algorithm.strip(', "()[]"`\n\t')
+                algorithm = algorithm.strip("'")
+                if algorithm:  # Ensure it's not empty
+                    selected_algorithms.append(algorithm)
+            self.selected_algorithms = selected_algorithms
+            print("\nSelected Algorithms:", self.selected_algorithms)
+        except Exception as e:
+            print(f"\nError parsing selected algorithms: {e}")
+            # Optionally, handle the error or retry
 
-        # Now we wait for critique
-        session_state["phase"] = "waiting_for_critique"
-        yield "\nDONE:Algorithm selection complete. Please provide critique (empty if none)."
+        self.current_substep = 2  # Move to the critique handling substep
+        self.finished = True
 
-    return Response(generate(), mimetype='text/plain')
+
+class Step_4:
+    def __init__(self, llm: str = "gpt-4o"):
+        """
+        Initializes Step_4 with the language model.
+
+        Args:
+            llm (str, optional): The language model to use. Defaults to "gpt-4o".
+        """
+        self.step_id = 3
+        self.current_substep = 0
+        self.llm = llm
+        self.finished = False
+
+        # Attributes to be set during the first call
+        self.selected_algorithms = []
+        self.research_question = ""
+        self.classification_result = ""
+        self.basic_dataset_evaluation = ""
+        self.dataset = []
+
+        # Internal state
+        self.critique = "First Attempt no critique yet."
+        self.hyperparameters_dict = {}
+        self.calibrated_algorithms = {}
+        self.results = {}
+        self.parsed_results = {}
+
+    def __call__(
+        self,
+        message: str,
+        selected_algorithms: list = None,
+        research_question: str = None,
+        classification_result: str = None,
+        basic_dataset_evaluation: str = None,
+        dataset: list = None,
+    ):
+        """
+        Routes the incoming message to the appropriate substep based on the current state.
+
+        Parameters:
+            message (str): The user input message, typically a critique or confirmation.
+            selected_algorithms (list, optional): List of algorithms selected in Step 3.
+            research_question (str, optional): The main research question.
+            classification_result (str, optional): The classification result from Step 1.
+            basic_dataset_evaluation (str, optional): Evaluation of the dataset from Step 3.
+            dataset (list, optional): The dataset to perform analysis on.
+        """
+        # Initialize attributes on the first call
+        if self.current_substep == 0 and any(
+            param is not None
+            for param in [
+                selected_algorithms,
+                research_question,
+                classification_result,
+                basic_dataset_evaluation,
+                dataset,
+            ]
+        ):
+            if selected_algorithms is not None:
+                self.selected_algorithms = selected_algorithms
+            if research_question is not None:
+                self.research_question = research_question
+            if classification_result is not None:
+                self.classification_result = classification_result
+            if basic_dataset_evaluation is not None:
+                self.basic_dataset_evaluation = basic_dataset_evaluation
+            if dataset is not None:
+                self.dataset = dataset
+
+        # Update critique based on the message
+        if message.strip() != "":
+            if self.current_substep == 1:
+                self.critique = f"Previous Answer to this task: {self.hyperparameters_dict}. \nUser-Critique: {message}"
+            elif self.current_substep == 2:
+                self.critique = f"Previous Results: {self.results}. \nUser-Critique: {message}"
+            elif self.current_substep == 3:
+                self.critique = f"Previous Parsed Results: {self.parsed_results}. \nUser-Critique: {message}"
+            else:
+                self.critique = f"Previous Answer to this task: {getattr(self, 'parsed_results', 'N/A')}. \nUser-Critique: {message}"
+        else:
+            self.critique = "No Critique"
+
+        # Route to the appropriate substep
+        if self.current_substep == 0:
+            # Begin hyperparameter selection and algorithm calibration
+            self.substep_0(self.critique)
+        elif self.current_substep == 1:
+            # Handle user critique after hyperparameter selection
+            if message.strip() == "":
+                # Empty message signifies confirmation to proceed
+                self.current_substep = 2
+                self.substep_1()  # Proceed to run algorithms
+            else:
+                # Non-empty message is treated as a critique; redo hyperparameter selection
+                self.substep_0(self.critique)
+        elif self.current_substep == 2:
+            # Handle user critique after running algorithms
+            if message.strip() == "":
+                # Empty message signifies confirmation to proceed
+                self.current_substep = 3
+                self.substep_2()  # Proceed to parse results
+            else:
+                # Non-empty message is treated as a critique; rerun algorithms or adjust hyperparameters
+                self.substep_1()
+        elif self.current_substep == 3:
+            # Handle user critique after parsing results
+            if message.strip() == "":
+                # Empty message signifies confirmation to finish Step 4
+                self.finished = True
+                print("Step 4 completed successfully.")
+                return
+            else:
+                # Non-empty message is treated as a critique; rerun analysis or adjust previous steps
+                self.finished = False
+                self.substep_2()
+        else:
+            raise ValueError(f"Invalid substep state: {self.current_substep}")
+
+    def substep_0(self, critique: str = "First attempt so no critique"):
+        """
+        Generates hyperparameters for the selected algorithms and calibrates them.
+
+        Args:
+            critique (str, optional): User critique to refine hyperparameter selection. Defaults to "First attempt so no critique".
+        """
+        print(
+            "Substep 4.0: Generating hyperparameters and calibrating algorithms"
+        )
+
+        # Construct the hyperparameter selection prompt
+        hyper_parameter_guessor_prompt = ""
+        for algorithm_name in self.selected_algorithms:
+            try:
+                hyper_parameter_guessor_prompt += (
+                    hyperparamter_selection_prompts[algorithm_name]
+                )
+            except KeyError:
+                print(
+                    f"Warning: No hyperparameter prompt found for {algorithm_name}. Skipping."
+                )
+                continue
+
+        hyper_parameter_guessor_prompt += multi_algorithm_prompt
+
+        # Initialize the HyperParameterGuessor
+        hyper_parameter_guessor = HyperParameterGuessor(
+            prompt_explanation=hyper_parameter_guessor_prompt,
+            llm=self.llm,
+        )
+
+        # Initialize the response parser
+        answer_parser = ReasoningResponseParser(
+            start_answer_token=hyper_parameter_guessor.start_answer_token,
+            stop_answer_token=hyper_parameter_guessor.stop_answer_token,
+        )
+
+        # Generate hyperparameters
+        response = hyper_parameter_guessor(
+            research_question=self.research_question,
+            research_question_class=self.classification_result,
+            basic_dataset_evaluation=self.basic_dataset_evaluation,
+            critic=critique,
+        )
+
+        # Parse the streaming response
+        for chunk in response:
+            token = chunk.choices[0].delta.content
+            if token is None:
+                break
+            token_type = answer_parser(token)
+            if not token_type:
+                break
+            print(token, end="")  # Optional: For debugging or logging purposes
+
+        reasoning = answer_parser.reasoning
+        hyperparameters_raw = answer_parser.answer
+
+        # Convert the JSON output to a dictionary
+        self.hyperparameters_dict = json_to_dict(hyperparameters_raw)
+
+        if self.hyperparameters_dict is None:
+            print("Error: Failed to parse hyperparameters JSON.")
+            return
+
+        print("\nParsed Hyperparameters:", self.hyperparameters_dict)
+
+        # Calibrate the algorithms with the parsed hyperparameters
+        try:
+            self.calibrated_algorithms = {
+                algorithm_name: algorithms[algorithm_name](**guessing_results)
+                for algorithm_name, guessing_results in self.hyperparameters_dict.items()
+            }
+        except Exception as e:
+            print(f"Error calibrating algorithms: {e}")
+            self.calibrated_algorithms = {}
+
+        self.current_substep = 1  # Move to the next substep
+
+    def substep_1(self):
+        """
+        Runs the calibrated algorithms on the dataset and collects results.
+        """
+        print("\nSubstep 4.1: Running calibrated algorithms on the dataset")
+
+        self.results = {}
+
+        for algorithm_name, algorithm in self.calibrated_algorithms.items():
+            try:
+                self.results[algorithm_name] = algorithm(self.dataset)
+                print(f"Algorithm '{algorithm_name}' executed successfully.")
+            except Exception as e:
+                self.results[algorithm_name] = str(e)
+                print(f"Error running algorithm '{algorithm_name}': {e}")
+
+        print("\nCollected Results:", self.results)
+        self.current_substep = 2  # Move to the next substep
+
+    def substep_2(self):
+        """
+        Parses the raw results obtained from the algorithms.
+        """
+        print("\nSubstep 4.2: Parsing the results")
+
+        # Initialize the ResultsParser
+        results_parser = ResultsParser()
+
+        # Parse the results
+        self.parsed_results = results_parser(results=self.results)
+
+        print("\nParsed Results:", self.parsed_results)
+        self.current_substep = 3  # Move to the critique handling substep
+        self.finished = True
+
+
+class Step_5:
+    def __init__(
+        self,
+        llm: str = "gpt-4o",
+    ):
+        """
+        Initializes Step_5 with necessary parameters from previous steps.
+
+        Args:
+
+            llm (str, optional): The language model to use. Defaults to "gpt-4o".
+        """
+        self.step_id = 4
+        self.current_substep = 0
+        self.research_question = ""
+        self.classification_result = ""
+        self.parsed_algorithm_results = ""
+        self.search_strings = ""
+        self.basic_dataset_evaluation = ""
+        self.llm = llm
+        self.critique = "First attempt so no critique"
+        self.analysis_result = ""
+        self.finished = False
+
+    def __call__(
+        self,
+        message: str,
+        research_question: str,
+        classification_result: str,
+        parsed_algorithm_results: dict,
+        search_strings: list,
+        basic_dataset_evaluation: str,
+    ):
+        """
+        Routes the incoming message to the appropriate substep based on the current state.
+
+        Args:
+            message (str): The user input message, typically a critique or confirmation.
+        """
+        self.research_question = research_question
+        self.classification_result = classification_result
+        self.parsed_algorithm_results = parsed_algorithm_results
+        self.search_strings = search_strings
+        self.basic_dataset_evaluation = basic_dataset_evaluation
+
+        if message != "":
+            self.critique = f"Previous Answer to this task: {self.analysis_result}. \nUser-Critique: {message}"
+        else:
+            self.critique = "No Critique"
+
+        if self.current_substep == 0:
+            # Begin analysis of the results
+            self.substep_0(self.critique)
+        elif self.current_substep == 1:
+            # Handle user critique after analysis
+            if message.strip() == "":
+                # Empty message signifies confirmation to proceed
+                self.finished = True
+                return
+            else:
+                # Non-empty message is treated as a critique; redo analysis
+                self.finished = False
+                self.substep_0(self.critique)
+        else:
+            raise ValueError(f"Invalid substep state: {self.current_substep}")
+
+    def substep_0(self, critique: str = "First attempt so no critique"):
+        """
+        Analyzes the parsed algorithm results using the ResultsAnalyzer.
+
+        Args:
+            critique (str, optional): User critique to refine the analysis. Defaults to "First attempt so no critique".
+        """
+        print("Substep 5.0: Analyzing the results")
+
+        # Initialize the ResultsAnalyzer
+        results_analyzer = ResultsAnalyzer(llm=self.llm)
+
+        # Initialize the response parser
+        answer_parser = ReasoningResponseParser(
+            start_answer_token=results_analyzer.start_answer_token,
+            stop_answer_token=results_analyzer.stop_answer_token,
+        )
+
+        # Generate the analysis
+        response = results_analyzer(
+            research_question=self.research_question,
+            research_question_class=self.classification_result,
+            parsed_algorithm_results=self.parsed_algorithm_results,
+            search_strings=self.search_strings,
+            basic_dataset_evaluation=self.basic_dataset_evaluation,
+            critique=critique,
+        )
+
+        # Parse the streaming response
+        for chunk in response:
+            token = chunk.choices[0].delta.content
+            if token is None:
+                break
+            token_type = answer_parser(token)
+            if not token_type:
+                break
+            print(token, end="")  # Optional: For debugging or logging purposes
+
+        self.analysis_result = answer_parser.full_output.strip()
+        print("\n\nAnalysis Result:", self.analysis_result)
+
+        self.current_substep = 1  # Move to the next substep
+        self.finished = True
+
+
+class Step_6:
+    def __init__(self, llm: str):
+        self.step_id = 5
+        self.current_substep = 0
+        self.llm = llm
+        self.finished = False
+
+    def __call__(self, message: str, analysis_result: str):
+        pdf_generator = LaTeXPaperGenerator(llm=self.llm)
+        pdf_generator(analysis_results=analysis_result)
+        self.finished = True
+
+
+class API:
+    def __init__(self, llm: str = base_model):
+        self.current_step = 0
+        self.llm = llm
+        self.steps = {
+            0: Step_1(llm),
+            1: Step_2(llm),
+            2: Step_3(llm),
+            3: Step_4(llm),
+            4: Step_5(llm),
+            5: Step_6(llm),
+        }
+        self.messages = Queue()
+        self.current_message = None
+
+    def get_allowed_steps(self):
+        allowed_steps = [False for _ in range(len(self.steps))]
+
+        for i, step in self.steps.items():
+            # first step is always allowed
+            if i == 0:
+                allowed_steps[i] = True
+            if i == len(allowed_steps) - 1:
+                break  # last step
+
+            if step.finished:
+                allowed_steps[i + 1] = True
+        return allowed_steps
+
+    async def get_step_states(self):
+        step_states = {
+            i: {"isallowed": allowed}
+            for i, allowed in enumerate(self.get_allowed_steps())
+        }
+
+        for i, step in self.steps.items():
+            step_states[i]["finished"] = step.finished
+
+        return json.dumps(step_states)
+
+    async def upload_user_message(self, user_message: str, step: int):
+
+        # checking if the step is allowed
+        if not self.get_allowed_steps()[step]:
+            return self.get_step_states()
+        else:
+            if step == 0:
+                response_messages = self.steps[0](user_message)
+                for response_message in response_messages:
+                    self.messages.put(response_message)
+
+    async def get_current_message(self):
+
+        if self.current_message is None:
+            try:
+                self.current_message = self.messages.get(timeout=0.01)
+
+            except Exception as e:
+
+                self.current_message = None
+
+        if self.current_message is not None:
+            message_json = self.current_message.to_json()
+
+            return message_json
+
+    async def stream_current_message(self):
+
+        if self.current_message is None:
+            return
+
+        response_parser = ReasoningResponseParser(
+            start_answer_token=self.current_message.start_answer_token,
+            stop_answer_token=self.current_message.stop_answer_token,
+        )
+
+        full_message = ""
+        all_tokens = []
+
+        for token in self.current_message.words:
+
+            try:
+                if type(token) != str:
+                    token = token.choices[0].delta.content
+                if token is None:
+                    continue
+
+                all_tokens.append(token)
+                print(token, end="")
+                full_message += token
+                if self.current_message.type == "reasoning":
+                    # the full resoponse from open ai contains the whole message
+                    # here we only yield the reasoning tokens
+                    token_type = response_parser(token=token)
+                    if token_type == "reasoning":
+                        yield token
+            except Exception as e:
+                print("Exception: ", e)
+                continue
+
+        if self.current_message.callback is not None:
+            answer_messages = self.current_message.callback(all_tokens)
+
+            for message in answer_messages:
+                self.messages.put(message)
+
+        self.current_message = None  # Reset the current message
+
+
+class UserMessage(BaseModel):
+    text: str
+    step: int
+
+
+app = FastAPI()
+api = API(llm=base_model)
+
+
+@app.get("/status")
+async def status():
+    return await api.get_step_states()
+
+
+@app.post("/user_message")
+async def user_message(data: UserMessage):
+    await api.upload_user_message(user_message=data.text, step=data.step)
+
+
+@app.get("/current_message")
+async def current_message():
+    return await api.get_current_message()
+
+
+@app.get("/stream_current_message")
+async def stream_current_message():
+    return StreamingResponse(
+        api.stream_current_message(), media_type="text/plain"
+    )
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    import uvicorn
+
+    uvicorn.run(app, host="127.0.0.1", port=8000)

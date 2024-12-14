@@ -59,22 +59,13 @@ class HyperParameterGuessor(ReasoningTextGenerator):
             str: The raw response from the LLM containing reasoning and generated hyperparameters.
         """
         # Construct the input prompt for the ReasoningTextGenerator
-        if critic:
-            input_text = f"""
-Research Question: "{research_question}"
-Research Question Classification: {research_question_class}
-Critic: "{critic}"
-Dataset Basic Evaluation: {basic_dataset_evaluation}
 
-Please generate a set of hyperparameters for the specified algorithm based on the Research Question and the basic evaluation of the Dataset.
-"""
-        else:
-            input_text = f"""
+        input_text = f"""
 Research Question: "{research_question}"
 Research Question Classification: {research_question_class}"
 Dataset Basic Evaluation: {basic_dataset_evaluation}
 
-Please generate a set of hyperparameters for the specified algorithm based on the Research Question and the basic evaluation of the Dataset.
+Please generate a set of hyperparameters for the specified algorithms based on the Research Question and the basic evaluation of the Dataset.
 """
 
         # Generate hyperparameters and reasoning steps

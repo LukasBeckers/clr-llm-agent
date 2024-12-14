@@ -17,6 +17,9 @@ class ReasoningResponseParser:
 
     def __call__(self, token: str) -> str:
 
+        if self.stop_answer_token in self.full_output:
+            return False
+
         if self.start_answer_token in self.full_output:
             self.answer += token
             self.answer = self.answer.replace(self.start_answer_token, "")
@@ -32,7 +35,8 @@ class ReasoningResponseParser:
             self.reasoning = self.reasoning.replace(self.stop_answer_token, "")
             self.full_output += token
             return "reasoning"        
-
+        
+        
     def reset(self):
         self.full_output = ""
         self.reasoning = ""
