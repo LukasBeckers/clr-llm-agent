@@ -13,22 +13,78 @@ const Mainwindow: React.FC<MainwindowProps> = ({ activeStep }) => {
     null
   );
 
+  console.log("ActiveStep in Main Window", activeStep);
+
   const handleFirstMessageCommit = (message: string) => {
-    // Store the first committed user message and trigger a re-render
-    setInitialUserMessage(message);
-    setStepMessages((prev) => ({
-      ...prev,
-      0: {
-        ...prev[0],
-        messages: [...prev[0].messages, { type: "user", text: message }],
-      },
-    }));
+    if (message !== "Go on, do your thing!") {
+      // Store the first committed user message and trigger a re-render
+      setInitialUserMessage(message);
+      setStepMessages((prev) => ({
+        ...prev,
+        0: {
+          ...prev[0],
+          messages: [
+            ...prev[0].messages,
+            { type: "user", text: message, step: 0 },
+          ],
+        },
+      }));
+      const payload = {
+        text: message,
+        step: activeStep,
+      };
+
+      // Log the payload to verify its structure and types
+      console.log("Sending payload:", payload);
+      console.log("Type of 'text':", typeof message);
+      console.log("Type of 'activeStep':", typeof activeStep);
+
+      // Send the POST request
+      fetch("http://127.0.0.1:8000/user_message", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+    }
+  };
+
+  const updateLastMessageInStep = (stepId: number, chunk: string) => {
+    setStepMessages((prev) => {
+      const stepData = prev[stepId];
+      if (!stepData || stepData.messages.length === 0) return prev;
+
+      const newMessages = [...stepData.messages];
+      const lastIndex = newMessages.length - 1;
+
+      // Create a new message object, ensuring a new reference:
+      newMessages[lastIndex] = {
+        ...newMessages[lastIndex],
+        text: newMessages[lastIndex].text + chunk,
+      };
+
+      // Return a new state object with updated references
+      const newState = {
+        ...prev,
+        [stepId]: {
+          ...stepData,
+          messages: newMessages,
+        },
+      };
+
+      return newState;
+    });
   };
 
   const [stepMessages, setStepMessages] = useState<{
     [stepId: number]: {
       initialUserMessage?: string;
-      messages: { type: "user" | "reasoning" | "result"; text: string }[];
+      messages: {
+        type: "user" | "reasoning" | "result" | "error" | "image";
+        text: string;
+        step: number;
+      }[];
     };
   }>({
     0: { messages: [] },
@@ -38,6 +94,7 @@ const Mainwindow: React.FC<MainwindowProps> = ({ activeStep }) => {
     4: { messages: [] },
     5: { messages: [] },
   });
+  console.log("stepMessages changed:", stepMessages);
 
   const addMessageToStep = (
     stepId: number,
@@ -82,11 +139,19 @@ const Mainwindow: React.FC<MainwindowProps> = ({ activeStep }) => {
         ) : (
           // Once the first message is committed, show the ContentsInUse component
           <ContentsInUse
+            activeStep={activeStep}
             messages={stepMessages[activeStep]?.messages || []}
             onUserMessage={(text) => {
               console.log("New user message:", text);
             }}
-            addMessage={(newMessage) => addMessageToStep(activeStep, newMessage)}
+            addMessage={(newMessage, step? : number) => {
+              const targetStep = step !== undefined ? step: activeStep;
+              addMessageToStep(targetStep, newMessage)
+            }}
+            updateLastMessage={(chunk, step? : number) => {
+              const targetStep = step !== undefined ? step: activeStep;
+              updateLastMessageInStep(targetStep, chunk)
+            }}
           />
         )}
       </div>

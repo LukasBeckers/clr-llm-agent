@@ -124,7 +124,6 @@ const Sidebar: React.FC<SidebarProps> = ({ children, onStepChange }) => {
     try {
       const response = await fetch("http://localhost:8000/status");
       const data: Record<string, { isallowed: boolean; finished: boolean }> = await response.json();
-      console.log("Fetched status data:", data);
 
       // Update steps based on parsed data
       setSteps((prevSteps) => {
@@ -141,7 +140,6 @@ const Sidebar: React.FC<SidebarProps> = ({ children, onStepChange }) => {
           }
           return step;
         });
-        console.log("Updated steps:", updatedSteps);
         return updatedSteps;
       });
 
@@ -153,8 +151,8 @@ const Sidebar: React.FC<SidebarProps> = ({ children, onStepChange }) => {
   };
 
   useEffect(() => {
-    // Start polling every 100ms to reduce load
-    const intervalId = setInterval(pollStatus, 100); // Adjust as needed
+    // Start polling every 1000ms to reduce load
+    const intervalId = setInterval(pollStatus, 1000); // Adjust as needed
 
     // Initial fetch to populate state immediately
     pollStatus();
@@ -190,36 +188,108 @@ const Sidebar: React.FC<SidebarProps> = ({ children, onStepChange }) => {
         <div className="h-[72px]"></div>
 
         {/* Step Elements */}
-        {steps.map((step) =>
-          step.isSettings ? (
-            <SettingsElement
-              key={step.id}
-              id={step.id}
-              isActive={step.isActive}
-              icon={step.icon!}
-              label={step.label}
-              onToggle={handleStepToggle}
-            />
-          ) : (
-            <StepElement
-              key={step.id}
-              id={step.id}
-              isActive={step.isActive}
-              isCompleted={step.isCompleted!}
-              isSelectable={step.isSelectable!}
-              lock_closed={step.lock_closed!}
-              lock_opened={step.lock_opened!}
-              lock_opened_white={step.lock_opened_white!}
-              check_mark_true={step.check_mark_true!}
-              check_mark_false={step.check_mark_false!}
-              label={step.label}
-              onToggle={handleStepToggle}
-            />
-          )
-        )}
-
+        {/* Step 1 */}
+        <StepElement
+          key={steps[0].id}
+          id={steps[0].id}
+          isActive={steps[0].isActive}
+          isCompleted={steps[0].isCompleted!}
+          isSelectable={steps[0].isSelectable!}
+          lock_closed={steps[0].lock_closed!}
+          lock_opened={steps[0].lock_opened!}
+          lock_opened_white={steps[0].lock_opened_white!}
+          check_mark_true={steps[0].check_mark_true!}
+          check_mark_false={steps[0].check_mark_false!}
+          label={steps[0].label}
+          onToggle={handleStepToggle}
+        />
+        {/* Step 2 */}
+        <StepElement
+          key={steps[1].id}
+          id={steps[1].id}
+          isActive={steps[1].isActive}
+          isCompleted={steps[1].isCompleted!}
+          isSelectable={steps[1].isSelectable!}
+          lock_closed={steps[1].lock_closed!}
+          lock_opened={steps[1].lock_opened!}
+          lock_opened_white={steps[1].lock_opened_white!}
+          check_mark_true={steps[1].check_mark_true!}
+          check_mark_false={steps[1].check_mark_false!}
+          label={steps[1].label}
+          onToggle={handleStepToggle}
+        />
+        {/* Step 3 */}
+        <StepElement
+          key={steps[2].id}
+          id={steps[2].id}
+          isActive={steps[2].isActive}
+          isCompleted={steps[2].isCompleted!}
+          isSelectable={steps[2].isSelectable!}
+          lock_closed={steps[2].lock_closed!}
+          lock_opened={steps[2].lock_opened!}
+          lock_opened_white={steps[2].lock_opened_white!}
+          check_mark_true={steps[2].check_mark_true!}
+          check_mark_false={steps[2].check_mark_false!}
+          label={steps[2].label}
+          onToggle={handleStepToggle}
+        />
+        {/* Step 4 */}
+        <StepElement
+          key={steps[3].id}
+          id={steps[3].id}
+          isActive={steps[3].isActive}
+          isCompleted={steps[3].isCompleted!}
+          isSelectable={steps[3].isSelectable!}
+          lock_closed={steps[3].lock_closed!}
+          lock_opened={steps[3].lock_opened!}
+          lock_opened_white={steps[3].lock_opened_white!}
+          check_mark_true={steps[3].check_mark_true!}
+          check_mark_false={steps[3].check_mark_false!}
+          label={steps[3].label}
+          onToggle={handleStepToggle}
+        />
+        {/* Step 5 */}
+        <StepElement
+          key={steps[4].id}
+          id={steps[4].id}
+          isActive={steps[4].isActive}
+          isCompleted={steps[4].isCompleted!}
+          isSelectable={steps[4].isSelectable!}
+          lock_closed={steps[4].lock_closed!}
+          lock_opened={steps[4].lock_opened!}
+          lock_opened_white={steps[4].lock_opened_white!}
+          check_mark_true={steps[4].check_mark_true!}
+          check_mark_false={steps[4].check_mark_false!}
+          label={steps[4].label}
+          onToggle={handleStepToggle}
+        />
+        {/* Step 6 */}
+        <StepElement
+          key={steps[5].id}
+          id={steps[5].id}
+          isActive={steps[5].isActive}
+          isCompleted={steps[5].isCompleted!}
+          isSelectable={steps[5].isSelectable!}
+          lock_closed={steps[5].lock_closed!}
+          lock_opened={steps[5].lock_opened!}
+          lock_opened_white={steps[5].lock_opened_white!}
+          check_mark_true={steps[5].check_mark_true!}
+          check_mark_false={steps[5].check_mark_false!}
+          label={steps[5].label}
+          onToggle={handleStepToggle}
+        />
         {/* Spacing */}
         <div className="flex-grow"></div>
+        {/*Settings*/}
+        <div className="mb-[48px]">
+          <SettingsElement
+            id={steps[steps.length - 1].id}
+            isActive={steps[steps.length - 1].isActive}
+            icon={steps[steps.length - 1].icon!}
+            label={steps[steps.length - 1].label}
+            onToggle={handleStepToggle}
+          />
+        </div>
       </aside>
     </div>
   );

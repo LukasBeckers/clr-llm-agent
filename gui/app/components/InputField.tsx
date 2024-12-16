@@ -34,6 +34,12 @@ const InputField: React.FC<InputFieldProps> = ({
         textarea.value = "";
         // Reset height to the minimum height
         textarea.style.height = "72px";
+      } else {
+        console.log("In handle Commit, empty message.")
+        onConfirm("Go on, do your thing!");
+        textarea.value = "";
+        // Reset height to the minimum height
+        textarea.style.height = "72px";
       }
     }
   };

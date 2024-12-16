@@ -32,7 +32,7 @@ You are a text classifier. Classify the following text into one of the categorie
 Further Explanation of your task: 
 {self.prompt_explanation}
 
-Critique of previous attempt by the user, take this seriously: 
+Critique of previous attempt by the user, take this seriously, if the user demands a certain outcome follow the users will even though you might disagree! 
 "{{critique}}"
 
 Please provide your reasoning step by step. After completing your reasoning, provide the classification result enclosed within `{self.start_answer_token}` and `{self.stop_answer_token}`.

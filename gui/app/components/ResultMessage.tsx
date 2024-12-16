@@ -5,21 +5,8 @@ interface ResultMessageProps {
   text: string; // initial text to be displayed
 }
 
-export interface ResultMessageHandle {
-  addText: (text: string) => void; // method to append new text
-}
-
-const ResultMessage = forwardRef<ResultMessageHandle, ResultMessageProps>(
-  ({ text }, ref) => {
-    const [currentText, setCurrentText] = useState<string>(text);
-
-    // Expose the addText method to parent components
-    useImperativeHandle(ref, () => ({
-      addText: (newText: string) => {
-        setCurrentText((prevText) => prevText + newText);
-      },
-    }));
-
+const ResultMessage: React.FC<ResultMessageProps> = (
+  ({ text }) => {
     return (
       <div
         className="relative bg-result_bg rounded-[16px]  max-w-[867px] min-w-[200px] w-auto pb-4"
@@ -33,8 +20,8 @@ const ResultMessage = forwardRef<ResultMessageHandle, ResultMessageProps>(
         </div>
 
         {/* Display the entire result text */}
-        <div className="mt-9 ml-8 mr-4 font-sans font-normal subpixel-antialiased text-base text-gray-700">
-          {currentText}
+        <div className="mt-9 ml-8 mr-4 font-sans font-normal subpixel-antialiased text-base text-gray-700 whitespace-pre-wrap">
+          {text}
         </div>
       </div>
     );

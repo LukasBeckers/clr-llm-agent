@@ -37,8 +37,7 @@ from uuid import uuid4
 import uuid
 from typing import List, Callable, Tuple
 from pydantic import BaseModel
-
-
+from matplotlib import pyplot as plt
 
 
 load_dotenv()
@@ -57,9 +56,10 @@ class Message:
         start_answer_token: str,
         stop_answer_token: str,
         callback: Callable = None,
+        url: str = None,
     ):
         """
-        step = int 0-5 and type = "reasoning" or "result"
+        step = int 0-5 and type = "reasoning" or "result" or "image"
         """
         self.id = uuid4()
         self.words = words
@@ -68,17 +68,17 @@ class Message:
         self.start_answer_token = start_answer_token
         self.stop_answer_token = stop_answer_token
         self.callback = callback
+        self.url = url
 
     def to_json(self):
-        return json.dumps(
-            {
-                "id": str(self.id),
-                "step": self.step,
-                "type": self.type,
-                "start_answer_token": self.start_answer_token,
-                "stop_answer_token": self.stop_answer_token,
-            }
-        )
+        return {
+            "id": str(self.id),
+            "step": self.step,
+            "type": self.type,
+            "start_answer_token": self.start_answer_token,
+            "stop_answer_token": self.stop_answer_token,
+            "url": self.url,
+        }
 
 
 class Step_1:
@@ -90,7 +90,7 @@ class Step_1:
         self.research_question = ""
         self.llm = llm
 
-    def __call__(self, message: str):
+    def __call__(self, message: str) -> Message:
         """
         Makes the class instance callable to route the message to the correct sub-step
         based on the current state of the step.
@@ -111,7 +111,21 @@ class Step_1:
 
             if message == "":
                 # Empty message is equal to a confirmation; nothing happens
-                return
+                response = Message(
+                    words=[
+                        word + " "
+                        for word in "This step is already completed, provide critique of the last substep or continue with the next step!".split(
+                            " "
+                        )
+                    ],
+                    step=0,
+                    type="reasoning",
+                    start_answer_token=self.start_answer_token,
+                    stop_answer_token=self.stop_answer_token,
+                )
+
+                return [response]
+
             else:
                 # Non-empty message is meant as critique, so the step is repeated.
                 self.finished = False
@@ -160,7 +174,7 @@ class Step_1:
         return [message]
 
     def _finish_answer(self, full_output: List[str]) -> List[Message]:
-
+        print("Begin Finish Answer")
         answer_parser = ReasoningResponseParser(
             start_answer_token=self.start_answer_token,
             stop_answer_token=self.stop_answer_token,
@@ -177,12 +191,16 @@ class Step_1:
         self.research_question_class = answer_parser.answer
 
         message = Message(
-            words=self.research_question_class,
+            words=[
+                word + " " for word in self.research_question_class.split(" ")
+            ],
             step=0,
             type="result",
             start_answer_token=self.start_answer_token,
             stop_answer_token=self.stop_answer_token,
         )
+
+        print("Created Answere in Finish Answere", message.to_json())
 
         self.current_substep = 1
         self.finished = True
@@ -206,13 +224,14 @@ class Step_2:
         self.critique = "First attempt so no critique"
         self.search_strings = []
         self.finished = False
+        self.dataset = {}
 
     def __call__(
         self,
         research_question: str,
         research_question_class: str,
         message: str,
-    ):
+    ) -> Message:
         """
         Makes the class instance callable to route the message to the correct sub-step
         based on the current state of the step.
@@ -222,6 +241,7 @@ class Step_2:
             classification_result (str): The classification result of the research question.
             message (str): The incoming message to process, typically a critique or confirmation.
         """
+        print("In Call of step 2", message)
         # Update the internal state with the latest research question and classification result
         self.research_question = research_question
         self.research_question_class = research_question_class
@@ -241,7 +261,20 @@ class Step_2:
             if message.strip() == "":
                 # Empty message signifies confirmation to proceed
                 self.finished = True
-                return
+                response = Message(
+                    words=[
+                        word + " "
+                        for word in "This step is already completed, provide critique of the last substep or continue with the next step!".split(
+                            " "
+                        )
+                    ],
+                    step=1,
+                    type="reasoning",
+                    start_answer_token=self.start_answer_token,
+                    stop_answer_token=self.stop_answer_token,
+                )
+
+                return [response]
             else:
                 # Non-empty message is treated as a critique; regenerate search strings
                 self.finished = False
@@ -249,7 +282,9 @@ class Step_2:
         else:
             raise ValueError(f"Invalid substep state: {self.current_substep}")
 
-    def substep_0(self, critique: str = "First attempt so no critique"):
+    def substep_0(
+        self, critique: str = "First attempt so no critique"
+    ) -> Message:
         """
         Generates search strings based on the research question and classification result.
 
@@ -262,12 +297,6 @@ class Step_2:
             self.llm, temperature=0
         )
 
-        # Initialize the response parser
-        answer_parser = ReasoningResponseParser(
-            start_answer_token=search_query_generator.start_answer_token,
-            stop_answer_token=search_query_generator.stop_answer_token,
-        )
-
         # Generate search strings
         response = search_query_generator(
             research_question=self.research_question,
@@ -275,9 +304,29 @@ class Step_2:
             critic=critique,
         )
 
+        self.start_answer_token = search_query_generator.start_answer_token
+        self.stop_answer_token = search_query_generator.stop_answer_token
+
+        message = Message(
+            words=response,
+            step=1,
+            type="reasoning",
+            start_answer_token=self.start_answer_token,
+            stop_answer_token=self.stop_answer_token,
+            callback=self._finish_answer,
+        )
+
+        return [message]
+
+    def _finish_answer(self, full_output: List[str]) -> Message:
+        # Initialize the response parser
+        answer_parser = ReasoningResponseParser(
+            start_answer_token=self.start_answer_token,
+            stop_answer_token=self.stop_answer_token,
+        )
+
         # Parse the streaming response
-        for chunk in response:
-            token = chunk.choices[0].delta.content
+        for token in full_output:
             if token is None:
                 break
             token_type = answer_parser(token)
@@ -305,8 +354,31 @@ class Step_2:
             # Optionally, you can set a flag or raise an exception
             return
 
+        message = Message(
+            words=[str(wordpair) + " " for wordpair in self.search_strings],
+            step=1,
+            type="result",
+            start_answer_token=self.start_answer_token,
+            stop_answer_token=self.stop_answer_token,
+        )
+
         self.current_substep = 1
         self.finished = True
+
+        # Downloading the datasets from the datasources
+        data_loader = DataLoader(email=email)
+        # data_set = data_loader(search_strings=search_strings[:])
+        # data_set = data_loader(search_strings=[("Glymph* OR Brain_Clearance", "pub_med")])
+
+        # with open(os.path.join("temp", "dataset"), "wb") as f:
+        #     pk.dump(data_set, f)
+
+        with open(os.path.join("temp", "dataset"), "rb") as f:
+            dataset = pk.load(f)
+
+        self.dataset = dataset
+
+        return [message]
 
 
 class Step_3:
@@ -333,9 +405,7 @@ class Step_3:
         self,
         dataset: list = None,
         research_question: str = "",
-        classification_result: str = "",
-        basic_dataset_evaluation: str = "",
-        basic_dataset_description: str = "",
+        research_question_class: str = "",
         message: str = "",
     ):
         """
@@ -356,12 +426,8 @@ class Step_3:
             self.dataset = dataset
         if research_question:
             self.research_question = research_question
-        if classification_result:
-            self.classification_result = classification_result
-        if basic_dataset_evaluation:
-            self.basic_dataset_evaluation = basic_dataset_evaluation
-        if basic_dataset_description:
-            self.basic_dataset_description = basic_dataset_description
+        if research_question_class:
+            self.classification_result = research_question_class
 
         # Update critique based on the message
         if message.strip() != "":
@@ -372,23 +438,54 @@ class Step_3:
         # Route to the appropriate substep
         if self.current_substep == 0:
             # Begin normalization and basic dataset analysis
-            self.substep_0(self.critique)
+            return self.substep_0(self.critique)
         elif self.current_substep == 1:
             # Begin algorithm selection
-            self.substep_1(self.critique)
+            return self.substep_1(self.critique)
         elif self.current_substep == 2:
             # Handle user critique after algorithm selection
             if message.strip() == "":
                 # Empty message signifies confirmation to proceed
                 self.finished = True
                 print("Step 3 is finished.")
-                return
+                response = Message(
+                    words=[word + " " for word in "This step is already completed, provide critique of the last substep or continue with the next step!".split(" ")],
+                    step=2,
+                    type="reasoning",
+                    start_answer_token=self.start_answer_token,
+                    stop_answer_token=self.stop_answer_token,
+                )
+
+                return [response]
+     
             else:
                 # Non-empty message is treated as a critique; redo algorithm selection
                 self.finished = False
-                self.substep_1(self.critique)
+                return self.substep_1(self.critique)
         else:
             raise ValueError(f"Invalid substep state: {self.current_substep}")
+
+    def plot_publications_over_time(self, data):
+        # Prepare data
+        years = list(data.keys())
+        counts = list(data.values())
+
+        # Create a figure
+        fig, ax = plt.subplots(figsize=(6, 4))
+        ax.bar(years, counts)
+        ax.set_xlabel("Year")
+        ax.set_ylabel("Number of Publications")
+        ax.set_title("Publications Over Time")
+
+        publications_over_time_path = os.path.abspath(
+            os.path.join(
+                "gui", "public", "visualizations", "PublicationsOverTime.png"
+            )
+        )
+
+        fig.savefig(publications_over_time_path)
+
+        return os.path.join("visualizations", "PublicationsOverTime.png")
 
     def substep_0(self, critique: str = "First attempt so no critique"):
         """
@@ -429,7 +526,44 @@ class Step_3:
         print("Dataset Evaluation:", self.basic_dataset_evaluation)
         print("Dataset Description:", self.basic_dataset_description)
 
+        plot_url = self.plot_publications_over_time(
+            self.basic_dataset_evaluation["Publications Over Time"]
+        )
+
+        messages = [
+            Message(
+                words=[
+                    word + " "
+                    for word in str(self.basic_dataset_evaluation).split(" ")
+                ],
+                step=2,
+                type="result",
+                start_answer_token="",
+                stop_answer_token="",
+            ),
+            Message(
+                words=[
+                    word + " "
+                    for word in str(self.basic_dataset_description).split(" ")
+                ],
+                step=2,
+                type="result",
+                start_answer_token="",
+                stop_answer_token="",
+            ),
+            Message(
+                words=["Publications over Time"],
+                step=2,
+                type="image",
+                start_answer_token="",
+                stop_answer_token="",
+                url=plot_url,
+            ),
+        ]
+
         self.current_substep = 1  # Move to the next substep
+
+        return messages
 
     def substep_1(self, critique: str = "First attempt so no critique"):
         """
@@ -448,29 +582,43 @@ class Step_3:
             prompt_explanation=algorithms_selector_prompt, llm=self.llm
         )
 
-        answer_parser = ReasoningResponseParser(
-            start_answer_token=algorithm_selector.start_answer_token,
-            stop_answer_token=algorithm_selector.stop_answer_token,
-        )
-
-        answer_parser.reset()
+        self.start_answer_token = algorithm_selector.start_answer_token
+        self.stop_answer_token = algorithm_selector.stop_answer_token
 
         response = algorithm_selector(
             research_question=self.research_question,
-            rq_class=self.classification_result,
+            research_question_class=self.classification_result,
             basic_dataset_evaluation=self.basic_dataset_evaluation,
             critic=critique,
         )
 
+        messages = [
+            Message(
+                words=response,
+                step=2,
+                type="reasoning",
+                start_answer_token=self.start_answer_token,
+                stop_answer_token=self.stop_answer_token,
+                callback=self.finish_answer_substep1,
+            )
+        ]
+
+        return messages
+
+    def finish_answer_substep1(
+        self, full_response: List[str]
+    ) -> List[Message]:
+        answer_parser = ReasoningResponseParser(
+            start_answer_token=self.start_answer_token,
+            stop_answer_token=self.stop_answer_token,
+        )
         # Parse the streaming response
-        for chunk in response:
-            token = chunk.choices[0].delta.content
+        for token in full_response:
             if token is None:
                 break
             token_type = answer_parser(token)
             if not token_type:
                 break
-            print(token, end="")  # Optional: For debugging or logging purposes
 
         reasoning = answer_parser.reasoning
         algorithms_raw = answer_parser.answer
@@ -486,11 +634,26 @@ class Step_3:
             self.selected_algorithms = selected_algorithms
             print("\nSelected Algorithms:", self.selected_algorithms)
         except Exception as e:
+            self.selected_algorithms = []
             print(f"\nError parsing selected algorithms: {e}")
             # Optionally, handle the error or retry
 
         self.current_substep = 2  # Move to the critique handling substep
         self.finished = True
+
+        messages = [
+            Message(
+                words=[
+                    word for word in str(self.selected_algorithms).split(" ")
+                ],
+                step=2,
+                type="result",
+                start_answer_token=self.start_answer_token,
+                stop_answer_token=self.stop_answer_token,
+            )
+        ]
+
+        return messages
 
 
 class Step_4:
@@ -525,7 +688,7 @@ class Step_4:
         message: str,
         selected_algorithms: list = None,
         research_question: str = None,
-        classification_result: str = None,
+        research_question_class: str = None,
         basic_dataset_evaluation: str = None,
         dataset: list = None,
     ):
@@ -546,7 +709,7 @@ class Step_4:
             for param in [
                 selected_algorithms,
                 research_question,
-                classification_result,
+                research_question_class,
                 basic_dataset_evaluation,
                 dataset,
             ]
@@ -555,8 +718,8 @@ class Step_4:
                 self.selected_algorithms = selected_algorithms
             if research_question is not None:
                 self.research_question = research_question
-            if classification_result is not None:
-                self.classification_result = classification_result
+            if research_question_class is not None:
+                self.classification_result = research_question_class
             if basic_dataset_evaluation is not None:
                 self.basic_dataset_evaluation = basic_dataset_evaluation
             if dataset is not None:
@@ -578,36 +741,44 @@ class Step_4:
         # Route to the appropriate substep
         if self.current_substep == 0:
             # Begin hyperparameter selection and algorithm calibration
-            self.substep_0(self.critique)
+            return self.substep_0(self.critique)
         elif self.current_substep == 1:
             # Handle user critique after hyperparameter selection
             if message.strip() == "":
                 # Empty message signifies confirmation to proceed
                 self.current_substep = 2
-                self.substep_1()  # Proceed to run algorithms
+                return self.substep_1()  # Proceed to run algorithms
             else:
                 # Non-empty message is treated as a critique; redo hyperparameter selection
-                self.substep_0(self.critique)
+                return self.substep_0(self.critique)
         elif self.current_substep == 2:
             # Handle user critique after running algorithms
             if message.strip() == "":
                 # Empty message signifies confirmation to proceed
                 self.current_substep = 3
-                self.substep_2()  # Proceed to parse results
+                return self.substep_2()  # Proceed to parse results
             else:
                 # Non-empty message is treated as a critique; rerun algorithms or adjust hyperparameters
-                self.substep_1()
+                return self.substep_1()
         elif self.current_substep == 3:
             # Handle user critique after parsing results
             if message.strip() == "":
                 # Empty message signifies confirmation to finish Step 4
                 self.finished = True
-                print("Step 4 completed successfully.")
-                return
+                response = Message(
+                    words=[word + " " for word in "This step is already completed, provide critique of the last substep or continue with the next step!".split(" ")],
+                    step=3,
+                    type="reasoning",
+                    start_answer_token=self.start_answer_token,
+                    stop_answer_token=self.stop_answer_token,
+                )
+
+                return [response]
+         
             else:
                 # Non-empty message is treated as a critique; rerun analysis or adjust previous steps
                 self.finished = False
-                self.substep_2()
+                return self.substep_2()
         else:
             raise ValueError(f"Invalid substep state: {self.current_substep}")
 
@@ -643,11 +814,10 @@ class Step_4:
             llm=self.llm,
         )
 
-        # Initialize the response parser
-        answer_parser = ReasoningResponseParser(
-            start_answer_token=hyper_parameter_guessor.start_answer_token,
-            stop_answer_token=hyper_parameter_guessor.stop_answer_token,
-        )
+        self.start_answer_token = hyper_parameter_guessor.start_answer_token
+        self.stop_answer_token = hyper_parameter_guessor.stop_answer_token
+
+        
 
         # Generate hyperparameters
         response = hyper_parameter_guessor(
@@ -657,9 +827,29 @@ class Step_4:
             critic=critique,
         )
 
+        messages = [
+            Message(
+                words=response,
+                step=3,
+                type="reasoning",
+                start_answer_token=self.start_answer_token,
+                stop_answer_token=self.stop_answer_token,
+                callback=self._finalize_answer
+            )
+        ]
+
+        return messages
+    
+
+    def _finalize_answer(self, full_output):
+        # Initialize the response parser
+        answer_parser = ReasoningResponseParser(
+            start_answer_token=self.start_answer_token,
+            stop_answer_token=self.stop_answer_token,
+        )
+
         # Parse the streaming response
-        for chunk in response:
-            token = chunk.choices[0].delta.content
+        for token in full_output:
             if token is None:
                 break
             token_type = answer_parser(token)
@@ -691,6 +881,20 @@ class Step_4:
 
         self.current_substep = 1  # Move to the next substep
 
+        messages = [
+            Message(
+                words=[
+                    json.dumps(self.hyperparameters_dict)
+                ],
+                step=3,
+                type="result",
+                start_answer_token=self.start_answer_token,
+                stop_answer_token=self.stop_answer_token,
+            )
+        ]
+
+        return messages
+
     def substep_1(self):
         """
         Runs the calibrated algorithms on the dataset and collects results.
@@ -706,9 +910,28 @@ class Step_4:
             except Exception as e:
                 self.results[algorithm_name] = str(e)
                 print(f"Error running algorithm '{algorithm_name}': {e}")
-
+                
+        import pickle as pk
+        with open(os.path.join("temp", "results.pk"), "wb") as f:
+            pk.dump(self.results, f)
+            
         print("\nCollected Results:", self.results)
         self.current_substep = 2  # Move to the next substep
+
+        messages = [
+            Message(
+                words=[
+                    json.dumps(self.results)
+                ],
+                step=3,
+                type="result",
+                start_answer_token=self.start_answer_token,
+                stop_answer_token=self.stop_answer_token,
+            )
+        ]
+
+        return messages
+
 
     def substep_2(self):
         """
@@ -725,6 +948,21 @@ class Step_4:
         print("\nParsed Results:", self.parsed_results)
         self.current_substep = 3  # Move to the critique handling substep
         self.finished = True
+
+        messages = [
+            Message(
+                words=[
+                    self.parsed_results
+                    ],
+                step=3,
+                type="result",
+                start_answer_token=self.start_answer_token,
+                stop_answer_token=self.stop_answer_token,
+            )
+        ]
+
+        return messages
+
 
 
 class Step_5:
@@ -873,7 +1111,7 @@ class API:
             # first step is always allowed
             if i == 0:
                 allowed_steps[i] = True
-        
+
             if i == len(allowed_steps) - 1:
                 break  # last step
 
@@ -893,7 +1131,11 @@ class API:
         return step_states
 
     async def upload_user_message(self, user_message: str, step: int):
+        print("User Message", user_message)
+        if user_message == "Go on, do your thing!":
+            user_message = ""
 
+        print("User Message", user_message)
         # checking if the step is allowed
         if not self.get_allowed_steps()[step]:
             return self.get_step_states()
@@ -903,8 +1145,43 @@ class API:
                 for response_message in response_messages:
                     self.messages.put(response_message)
 
-    async def get_current_message(self):
+            if step == 1:
+                response_messages = self.steps[1](
+                    self.steps[0].research_question,
+                    self.steps[0].research_question_class,
+                    user_message,
+                )
+                for response_message in response_messages:
+                    self.messages.put(response_message)
 
+            if step == 2:
+                response_messages = self.steps[2](
+                    dataset=self.steps[1].dataset,
+                    research_question=self.steps[0].research_question,
+                    research_question_class=self.steps[
+                        0
+                    ].research_question_class,
+                    message=user_message,
+                )
+                for response_message in response_messages:
+                    self.messages.put(response_message)
+
+            if step == 3: 
+                response_messages = self.steps[3](
+                    message=user_message,
+                    selected_algorithms=self.steps[2].selected_algorithms,
+                    dataset=self.steps[1].dataset,
+                    research_question=self.steps[0].research_question,
+                    research_question_class=self.steps[
+                        0
+                    ].research_question_class,
+                    basic_dataset_evaluation=self.steps[2].basic_dataset_evaluation,
+                )
+
+                for response_message in response_messages:
+                    self.messages.put(response_message)
+
+    async def get_current_message(self):
         if self.current_message is None:
             try:
                 self.current_message = self.messages.get(timeout=0.01)
@@ -915,7 +1192,9 @@ class API:
 
         if self.current_message is not None:
             message_json = self.current_message.to_json()
-
+            # special handeling of image messages
+            if message_json["type"] == "image":
+                self.current_message = None
             return message_json
 
     async def stream_current_message(self):
@@ -932,10 +1211,11 @@ class API:
         all_tokens = []
 
         for token in self.current_message.words:
-
             try:
-                if type(token) != str:
+                try:
                     token = token.choices[0].delta.content
+                except Exception:
+                    pass
                 if token is None:
                     continue
 
@@ -948,14 +1228,21 @@ class API:
                     token_type = response_parser(token=token)
                     if token_type == "reasoning":
                         yield token
+
+                # Result Messages are already filtered so we yield all tokens.
+                if self.current_message.type == "result":
+                    yield token
             except Exception as e:
                 print("Exception: ", e)
                 continue
 
         if self.current_message.callback is not None:
+            print("Found Callback")
             answer_messages = self.current_message.callback(all_tokens)
 
             for message in answer_messages:
+                print("Answere Message Text", message.words)
+                print("Answer message type", message.type)
                 self.messages.put(message)
 
         self.current_message = None  # Reset the current message
@@ -986,12 +1273,16 @@ async def status():
 
 @app.post("/user_message")
 async def user_message(data: UserMessage):
+    print("Data of usermessage", data)
     await api.upload_user_message(user_message=data.text, step=data.step)
 
 
 @app.get("/current_message")
 async def current_message():
-    return await api.get_current_message()
+    result = await api.get_current_message()
+
+    print("Result of current_message api call", result)
+    return result
 
 
 @app.get("/stream_current_message")

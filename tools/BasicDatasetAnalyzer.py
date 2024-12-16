@@ -1,5 +1,5 @@
 import os
-import openai
+from openai import OpenAI
 from dotenv import load_dotenv
 from collections import defaultdict
 from datetime import datetime
@@ -32,10 +32,11 @@ class BasicDatasetAnalyzer:
         if not self.api_key:
             raise ValueError("OpenAI API key not found. Please set OPENAI_API_KEY in your environment.")
         
-        openai.api_key = self.api_key
         self.model_name = llm
         self.temperature = temperature
         self.dataset = []  # Initialize an empty dataset
+        self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
 
     def analyze_dataset(self) -> Dict:
         """
@@ -97,19 +98,18 @@ class BasicDatasetAnalyzer:
             str: The generated descriptive summary.
         """
         try:
-            response = openai.ChatCompletion.create(
-                model=self.model_name,
-                messages=[
+            response = self.client.chat.completions.create(
+            model=self.model_name,
+            messages=[
                     {"role": "system", "content": "You are an expert at describing datasets."},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=self.temperature,
-                max_tokens=1000,  # Adjust as needed
-                n=1,
-                stop=None,
-            )
+            temperature=self.temperature,
+            stream=False,
+        )
+
             # Extract the generated text
-            description = response.choices[0].message['content'].strip()
+            description = response.choices[0].message.content.strip()
             return description
         except Exception as e:
             # Handle exceptions from OpenAI API
