@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from langchain.prompts import PromptTemplate
 from agents.TextGenerator import TextGenerator
+import shutil
 
 # Assuming latex_paper_prompt is defined in step6.prompts
 from step6.prompts import latex_paper_prompt
@@ -90,6 +91,19 @@ class LaTeXPaperGenerator(TextGenerator):
 
         # Generate the LaTeX code with optional critique
         raw_response = self.generate(input_text, critique=critique)
+
+        response = ""
+        for chunk in raw_response:
+            try:
+                token = chunk.choices[0].delta.content
+            except Exception:
+                pass
+            if token is None:
+                continue
+            
+            response += token
+
+        raw_response = response
 
         # Convert the streaming response to a complete string if necessary
         if isinstance(raw_response, list):

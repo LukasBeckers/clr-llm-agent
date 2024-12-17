@@ -24,7 +24,7 @@ const ResultImage: React.FC<ResultImageProps> = ({ url, altText = "Result Image"
         <img
           src={url}
           alt={altText}
-          className="max-w-full h-auto rounded-md"
+          className="max-w-full h-auto rounded-[16px]"
           onError={(e) => {
             (e.target as HTMLImageElement).src = "C:\\Users\\Lukas\\PycharmProjects\\clr-llm-agent\\visualizations\\TopicWordsOverTime.png"; 
           }}

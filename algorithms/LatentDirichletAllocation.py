@@ -1,5 +1,6 @@
 from algorithms.IAlgorithm import IAlgorithm
 from tomotopy import LDAModel, TermWeight, ParallelScheme
+import tomotopy as tp
 from typing import Dict, List, Optional, Any, Union, Iterable, Callable, Tuple
 from kneed import KneeLocator
 import copy
@@ -31,7 +32,7 @@ class LatentDirichletAllocation(IAlgorithm):
         callback_interval: int = 10,
         callback: Optional[Callable] = None,
         show_progress: bool = False,
-        **kwargs: Any 
+        **kwargs: Any,
     ) -> None:
         """
         LDA Algorithm, the base topic modeling algorithm on which most other
@@ -99,7 +100,9 @@ class LatentDirichletAllocation(IAlgorithm):
         self.callback = callback
         self.show_progress = show_progress
 
-    def _visualize(self, results: Dict[str, Union[Dict, str, List]]) -> Dict[str, Union[Dict, str, List]]:
+    def _visualize(
+        self, results: Dict[str, Union[Dict, str, List]]
+    ) -> Dict[str, Union[Dict, str, List]]:
         """
         Creates Visualizations of the generated results including:
 
@@ -117,7 +120,7 @@ class LatentDirichletAllocation(IAlgorithm):
         # Plotting Word Clouds for each topic
         topic_words = results["Topic Words"]
         num_topics = len(topic_words)
-        
+
         # Determine the grid size for plotting all word clouds in one figure
         cols = 3  # Number of columns in the grid
         rows = (num_topics + cols - 1) // cols  # Calculate number of rows
@@ -129,31 +132,38 @@ class LatentDirichletAllocation(IAlgorithm):
             # Convert list of tuples into a dictionary for WordCloud
             word_freq = {word: prob for word, prob in words}
             # Generate word cloud
-            wordcloud = WordCloud(width=400,
-                                  height=400, background_color='white').generate_from_frequencies(word_freq)
+            wordcloud = WordCloud(
+                width=400, height=400, background_color="white"
+            ).generate_from_frequencies(word_freq)
             # Plot word cloud
             ax = axes[i]
-            ax.imshow(wordcloud, interpolation='bilinear')
-            ax.axis('off')
+            ax.imshow(wordcloud, interpolation="bilinear")
+            ax.axis("off")
             ax.set_title(f"Topic {i}", fontsize=14)
 
         # Hide any unused subplots
         for j in range(i + 1, len(axes)):
-            axes[j].axis('off')
+            axes[j].axis("off")
 
         plt.tight_layout()
-        wordclouds_filepath = os.path.join("visualizations", "TopicWordClouds.png")
+        wordclouds_filepath = os.path.join(
+            "gui", "public", "visualizations", "TopicWordClouds.png"
+        )
         plt.savefig(wordclouds_filepath)
         plt.close(fig)
 
         # Adding the word clouds to the results
-        results["Topic Word Clouds Explanation"] = """
+        results[
+            "Topic Word Clouds Explanation"
+        ] = """
         A plot that shows the word clouds for each topic. Each word cloud represents the top words in the topic, with the size of each word corresponding to its probability in the topic.
         """
         results["Topic Word Clouds"] = wordclouds_filepath
 
         # Plotting Histogram of Word Counts per Topic
-        counts_per_topic = results["Counts Per Topic"]  # Assuming this is a list of word counts per topic
+        counts_per_topic = results[
+            "Counts Per Topic"
+        ]  # Assuming this is a list of word counts per topic
         topics = list(range(len(counts_per_topic)))  # List of topic indices
 
         fig, ax = plt.subplots(figsize=(6, 6))
@@ -162,27 +172,32 @@ class LatentDirichletAllocation(IAlgorithm):
         ax.set_xlabel("Topic")
         ax.set_ylabel("Word Count")
         ax.set_xticks(topics)
-        ax.set_xticklabels([f"Topic {i}" for i in topics],
-                           rotation="vertical")
+        ax.set_xticklabels([f"Topic {i}" for i in topics], rotation="vertical")
 
         # Adding labels on top of each bar
         for bar in bars:
             yval = bar.get_height()
             ax.text(
                 bar.get_x() + bar.get_width() / 2,
-                yval + max(counts_per_topic) * 0.01,  # Adjust position above the bar
-                f'{int(yval)}',
-                ha='center',
-                va='bottom'
+                yval
+                + max(counts_per_topic)
+                * 0.01,  # Adjust position above the bar
+                f"{int(yval)}",
+                ha="center",
+                va="bottom",
             )
 
-        histogram_filepath = os.path.join("visualizations", "WordCountsPerTopic.png")
+        histogram_filepath = os.path.join(
+            "gui", "public", "visualizations", "WordCountsPerTopic.png"
+        )
         fig.tight_layout()
         fig.savefig(histogram_filepath)
         plt.close(fig)
 
         # Adding the histogram to the results
-        results["Word Counts per Topic Explanation"] = """
+        results[
+            "Word Counts per Topic Explanation"
+        ] = """
         A histogram that shows the total word counts for each topic.
         This provides an overview of how many words are associated with each topic.
         Each bar is labeled with the exact word count to make it easier to read.
@@ -243,7 +258,7 @@ class LatentDirichletAllocation(IAlgorithm):
             )
 
             # Compute the coherence score using the 'c_v' metric
-            cm = tp.coherence.CoherenceModel(model=model, coherence='c_v')
+            cm = tp.coherence.CoherenceModel(model=model, coherence="c_v")
             coherence = cm.get_score()
 
             coherence_scores.append(coherence)
@@ -257,10 +272,12 @@ class LatentDirichletAllocation(IAlgorithm):
         best_k = ks[best_index]
         best_model = models[best_index]
 
-        print(f"Optimal number of topics (k): {best_k} with Coherence Score: {max_coherence}")
-        
+        print(
+            f"Optimal number of topics (k): {best_k} with Coherence Score: {max_coherence}"
+        )
+
         return best_k, best_model
-            
+
     def __call__(
         self, documents: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
@@ -309,7 +326,7 @@ class LatentDirichletAllocation(IAlgorithm):
                 show_progress=self.show_progress,
             )
         print("Extracting the results")
-     
+
         # Extracting the results
         results = {
             "Documents Analyzed": len(documents),
@@ -370,15 +387,15 @@ n_words_topic_2....])
                 "rm_top": self.rm_top,
                 "k": self.k,
                 "alpha": self.alpha,
-                "eta": self.eta  ,
+                "eta": self.eta,
                 "seed": self.seed,
-                "transform": self.transform ,
-                "iter": self.iter
-            }
+                "transform": self.transform,
+                "iter": self.iter,
+            },
         }
 
         print("after Results initialization")
-        
+
         for k in range(self.k):
             topic_words = model.get_topic_words(k, top_n=10)
             results["Topic Words"]["topic{}".format(k)] = topic_words

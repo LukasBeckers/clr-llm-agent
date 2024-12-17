@@ -404,7 +404,7 @@ Presented in this form:
         ax.legend()
         fig.tight_layout()
 
-        dynamic_topic_word_counts_path = os.path.join("visualizations", "DynamicTopicWordCounts.png")
+        dynamic_topic_word_counts_path = os.path.join("gui", "public", "visualizations", "DynamicTopicWordCounts.png")
         fig.savefig(
             dynamic_topic_word_counts_path
         )
@@ -474,7 +474,7 @@ Presented in this form:
 
         ax.legend()
         fig.tight_layout()
-        dynamic_topic_distribution_path = os.path.join("visualizations", "DynamicTopicDistributions.png")
+        dynamic_topic_distribution_path = os.path.join("gui", "public", "visualizations", "DynamicTopicDistributions.png")
         fig.savefig(
             dynamic_topic_distribution_path
         )
@@ -545,7 +545,7 @@ Presented in this form:
         )  # You may need to adjust scaling based on your data
 
         plt.tight_layout()
-        topic_words_over_time_path = os.path.join("visualizations", "TopicWordsOverTime.png")
+        topic_words_over_time_path = os.path.join("gui", "public", "visualizations", "TopicWordsOverTime.png")
         fig.savefig(topic_words_over_time_path)
 
         results["TopicWordsOverTime"] = topic_words_over_time_path
@@ -613,6 +613,12 @@ Presented in this form:
         # Always deepcopy documents at strart of algorithm call to pervent
         # documents from changing
         documents = copy.deepcopy(documents)
+        print("Dokument 0", documents[0])
+        documents = [
+            document
+            for document in documents
+            if "AbstractNormalized" in document.keys()
+        ]
         # Converting the time-stamp strings into python time-stamps
         publication_dates = []
         documents_preprocessed = []
