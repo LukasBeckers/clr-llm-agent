@@ -15,7 +15,7 @@ class ResultsAnalyzer(TextGenerator):
         llm: str = "gpt-4o-mini",  # possible options: "gpt-4o-mini", "gpt-4", "gpt-4o", "o1-mini"
         prompt_explanation: str = results_analyzer_prompt,
         temperature: float = 1.0,
-        max_tokens: Optional[int] = 15000,  # Increased max tokens for detailed analysis
+        max_tokens: Optional[int] = 15000,  
         start_image_token: str = "<START_IMAGE>",
         stop_image_token: str = "<STOP_IMAGE>",
         start_image_description: str = "<START_IMAGE_DESCRIPTION>",

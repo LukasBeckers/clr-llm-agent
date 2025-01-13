@@ -932,8 +932,11 @@ class Step_4:
         self.current_substep = 2  # Move to the next substep
 
         messages = []
-    	
-        print("RSULTS DYNAMIC TOPIC MODELING", self.results["DynamicTopicModeling"])
+
+        print(
+            "RSULTS DYNAMIC TOPIC MODELING",
+            self.results["DynamicTopicModeling"],
+        )
 
         for algorithm, results in self.results.items():
             if type(results) == str:
@@ -1120,7 +1123,7 @@ class Step_5:
             search_strings=self.search_strings,
             basic_dataset_evaluation=self.basic_dataset_evaluation,
             critique=critique,
-            hyperparameters=self.hyperparameters
+            hyperparameters=self.hyperparameters,
         )
 
         messages = [
@@ -1177,6 +1180,7 @@ class Step_6:
         self.finished = False
 
     def __call__(self, message: str, analysis_result: str):
+        print("In Step 6!")
         pdf_generator = LaTeXPaperGenerator(llm=self.llm)
         pdf_generator(analysis_results=analysis_result)
         self.finished = True
@@ -1186,10 +1190,11 @@ class Step_6:
                 words=["PDF was created"],
                 step=5,
                 type="result",
-                start_answer_token=self.start_answer_token,
-                stop_answer_token=self.stop_answer_token,
+                start_answer_token="<START_LATEX>",
+                stop_answer_token="<STOP_LATEX>",
             )
         ]
+        print("Created Message is Step 6")
 
         return messages
 
@@ -1203,8 +1208,8 @@ class API:
             1: Step_2(llm),
             2: Step_3(llm),
             3: Step_4(llm),
-            4: Step_5(llm),
-            5: Step_6(llm),
+            4: Step_5("o1-mini"),
+            5: Step_6("o1-mini"),
         }
         self.messages = Queue()
         self.current_message = None
@@ -1319,6 +1324,8 @@ class API:
                     message=user_message,
                     analysis_result=self.steps[4].analysis_result,
                 )
+                for response_message in response_messages:
+                    self.messages.put(response_message)
 
     async def get_current_message(self):
         if self.current_message is None:

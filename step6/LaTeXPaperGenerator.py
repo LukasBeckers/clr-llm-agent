@@ -105,6 +105,8 @@ class LaTeXPaperGenerator(TextGenerator):
 
         raw_response = response
 
+        print("RAW RESPONSE", raw_response)
+
         # Convert the streaming response to a complete string if necessary
         if isinstance(raw_response, list):
             # If the response is a list of chunks (streaming), concatenate them
@@ -116,8 +118,8 @@ class LaTeXPaperGenerator(TextGenerator):
         # Extract the LaTeX code between the start and stop tokens
         latex_code = self._extract_between_tokens(
             generated_response,
-            self.start_answer_token,
-            self.stop_answer_token
+            self.start_latex_token,
+            self.stop_latex_token
         )
 
         if not latex_code:
@@ -188,6 +190,9 @@ class LaTeXPaperGenerator(TextGenerator):
 
         if start_index != -1 and stop_index != -1:
             return text[start_index + len(start_token):stop_index].strip()
+        else: 
+            text = text.replace(self.start_latex_token, "")
+            text = text.replace(self.stop_latex_token, "")
         return ""
 
     def _get_pdflatex_path(self) -> Optional[str]:
