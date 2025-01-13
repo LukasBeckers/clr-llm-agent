@@ -1435,8 +1435,6 @@ async def current_message():
 
 @app.get("/stream_current_message")
 async def stream_current_message():
-    print("Streaming current Message!")
-
     # Suppose api.stream_current_message() is an async generator that yields tokens
     async def sse_generator():
         async for token in api.stream_current_message():

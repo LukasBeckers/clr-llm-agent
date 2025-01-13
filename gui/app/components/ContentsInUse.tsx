@@ -145,14 +145,13 @@ const ContentsInUse: React.FC<ContentsInUseProps> = ({
 
   const streamTokens = async (step: number) => {
     try {
-      console.log("Stream current Message called!")
       const response = await fetch(
         "http://127.0.0.1:8000/stream_current_message"
+
       );
       if (!response.ok) {
         throw new Error(`Error streaming: ${response.statusText}`);
       }
-      console.log("Stream Message recieved!")
       const reader = response.body?.getReader();
       if (!reader) {
         throw new Error("No readable stream.");
@@ -162,7 +161,6 @@ const ContentsInUse: React.FC<ContentsInUseProps> = ({
 
       let done = false;
       while (!done) {
-        console.log("In while loop of stream Tokens")
         const { value, done: readerDone } = await reader.read();
         done = readerDone;
         if (value) {
