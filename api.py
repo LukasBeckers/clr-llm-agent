@@ -37,6 +37,7 @@ from uuid import uuid4
 import uuid
 from typing import List, Callable, Tuple
 from pydantic import BaseModel
+import asyncio
 from matplotlib import pyplot as plt
 
 
@@ -1366,13 +1367,14 @@ class API:
                     continue
 
                 all_tokens.append(token)
-                print(token, end="")
+                # print(token, end="")
                 full_message += token
                 if self.current_message.type == "reasoning":
                     # the full resoponse from open ai contains the whole message
                     # here we only yield the reasoning tokens
                     token_type = response_parser(token=token)
                     if token_type == "reasoning":
+                        print("Yielding Token: ", token)
                         yield token
 
                 # Result Messages are already filtered so we yield all tokens.
@@ -1433,8 +1435,23 @@ async def current_message():
 
 @app.get("/stream_current_message")
 async def stream_current_message():
+    print("Streaming current Message!")
+
+    # Suppose api.stream_current_message() is an async generator that yields tokens
+    async def sse_generator():
+        async for token in api.stream_current_message():
+            # SSE format
+            yield token
+            # "Nudge" flush 
+            await asyncio.sleep(0)
+
     return StreamingResponse(
-        api.stream_current_message(), media_type="text/plain"
+        sse_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no"
+        }
     )
 
 
