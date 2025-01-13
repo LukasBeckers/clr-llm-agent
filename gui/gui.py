@@ -18,7 +18,7 @@ from step6.LaTeXPaperGenerator import LaTeXPaperGenerator
 from tools.DataLoader import DataLoader
 from tools.TextNormalizer import TextNormalizer
 from tools.BasicDatasetAnalyzer import BasicDatasetAnalyzer
-from agents.LLMs import gpt_4o_mini, gpt_4o
+from agents.LLMs import gpt_4o_mini, gpt_4o, o1_mini	
 from dotenv import load_dotenv
 import os
 import pickle as pk
@@ -26,6 +26,7 @@ import pickle as pk
 load_dotenv()
 email = os.getenv("EMAIL_ADDRESS")
 base_model = gpt_4o
+advanced_model = o1_mini
 algorithms_selector_prompt = algorithms_selector_prompt_v2
 
 
@@ -55,7 +56,7 @@ class App(tk.Tk):
         style.configure(
             "TNotebook.Tab",
             background="#e0e0e0",
-            font=("Helvetica", 12),
+            font=("ubuntu", 12),
             padding=(10, 5),
         )
         style.map("TNotebook.Tab", background=[("selected", "#ffffff")])
@@ -69,12 +70,12 @@ class App(tk.Tk):
         self.rq_label = ttk.Label(
             self.header_frame,
             text="Enter your research question:",
-            font=("Helvetica", 16),
+            font=("ubuntu", 16),
         )
         self.rq_label.pack()
 
         self.rq_entry = ttk.Entry(
-            self.header_frame, width=100, font=("Helvetica", 12)
+            self.header_frame, width=100, font=("ubuntu", 12)
         )
         self.rq_entry.pack(pady=10)
 
@@ -109,18 +110,18 @@ class App(tk.Tk):
         step_label = ttk.Label(
             frame,
             text=f"Details for Step {step_number}",
-            font=("Helvetica", 16),
+            font=("ubuntu", 16),
         )
         step_label.pack(pady=10)
 
         text_area = scrolledtext.ScrolledText(
-            frame, wrap="word", font=("Helvetica", 12), height=20
+            frame, wrap="word", font=("ubuntu", 12), height=20
         )
         text_area.pack(expand=True, fill="both", padx=20, pady=10)
         text_area.tag_config("reasoning", foreground="blue")
         text_area.tag_config("result", foreground="green")
-        text_area.tag_config("header", font=("Helvetica", 14, "bold"))
-        text_area.tag_config("statement", font=("Helvetica", 12))
+        text_area.tag_config("header", font=("ubuntu", 14, "bold"))
+        text_area.tag_config("statement", font=("ubuntu", 12))
         setattr(self, f"step_{step_number}_text", text_area)
 
         # Start Button for each step
@@ -263,9 +264,9 @@ class App(tk.Tk):
 
         data_loader = DataLoader(email=email)
         # For demonstration, we're skipping actual data loading
-        # self.data_set = data_loader(search_strings=search_strings[:2])
+        #self.data_set = data_loader(search_strings=search_strings[:])
 
-        # Load dataset from disk (as per your existing code)
+        # Load dataset from disk )
         with open(os.path.join("temp", "dataset"), "rb") as f:
             self.data_set = pk.load(f)
 
@@ -436,7 +437,11 @@ class App(tk.Tk):
             except Exception as e:
                 logging.exception("Error obtaining hyperparameters")
                 raise
-
+            
+            if "LatentDirichletAllocation" in self.hyper_parameters:
+                self.hyper_parameters["LatentDirichletAllocation"][
+                        "hyper_parameters"
+                    ]["k"] = 6
             # Debugging, reducing the number of iterations for demonstration
             if "DynamicTopicModeling" in self.hyper_parameters:
                 try:
@@ -449,9 +454,6 @@ class App(tk.Tk):
                     self.hyper_parameters["DynamicTopicModeling"][
                         "hyper_parameters"
                     ]["iter"] = 500
-                    self.hyper_parameters["LatentDirichletAllocation"][
-                        "hyper_parameters"
-                    ]["k"] = 6
                  
                 except KeyError as e:
                     logging.exception(
@@ -555,7 +557,7 @@ class App(tk.Tk):
         parsed_results = results_parser(results=self.results)
 
         # Analyze the Results
-        results_analyzer = ResultsAnalyzer(llm=base_model)
+        results_analyzer = ResultsAnalyzer(llm=advanced_model)
 
         # Not nice
 
@@ -564,7 +566,8 @@ class App(tk.Tk):
             research_question_class=self.rq_class,
             parsed_algorithm_results=parsed_results,
             search_strings=self.search_strings,
-            basic_dataset_evaluation=self.basic_dataset_evaluation 
+            basic_dataset_evaluation=self.basic_dataset_evaluation,
+            hyperparameters=str(self.hyper_parameters)
         )
 
         # Display analysis result
@@ -599,7 +602,7 @@ class App(tk.Tk):
         self.update()
 
         # Generate PDF
-        pdf_generator = LaTeXPaperGenerator(base_model)
+        pdf_generator = LaTeXPaperGenerator(advanced_model)
         pdf_generator(analysis_results=self.analysis_result)
 
         text_area.insert(tk.END, f"PDF Generated Successfully.\n", "result")

@@ -19,5 +19,6 @@ Do not include references or acnowledgments!
 make sure that images fit on a page, by starting a new page before inserting the 
 image. 
 
-The report should be around 2000 words long. 
+The linespacing should be 1.5
+
 """

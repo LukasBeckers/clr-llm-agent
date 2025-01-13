@@ -16,7 +16,12 @@ Your task is to write a scientific paper based on the results of the analysis.
 
 The go in depth and try to realize novel insights from the results!
 
-Write at least 10000 words!
+Go in detail and describe exactly what was done for example describe all 
+search strings that were used and how the algorithms were configured.
+
+If you want to write a table use latex code.
+
+The report should be around 15000 words long. So really really really long!
 
 Do not worry about citations, they are added later. 
 
