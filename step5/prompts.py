@@ -21,8 +21,6 @@ search strings that were used and how the algorithms were configured.
 
 If you want to write a table use latex code.
 
-The report should be around 15000 words long. So really really really long!
-
 Do not worry about citations, they are added later. 
 
 Go really really in depth and go over and beyond in writing a detailed analysis.

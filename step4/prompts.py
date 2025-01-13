@@ -1,3 +1,55 @@
+multi_algorithm_prompt = """
+You were provided the Prompt-Explanation of one or more algorithms. You should ansere for all algorithms in one go in json format, without any code blocks or additonal formatting. Do not include any explanations or descriptions. Here is the exact format you should use:
+
+Replace "value" with your suggested values for each hyperparameter.
+
+e.g. if you got just one algorithm in this case CorrelatedTopicModel answere in this format:
+
+<START_HYPERPARAMETERS>
+{
+    "CorrelatedTopicModel": {
+        "num_topics": value,
+        "alpha": "value",
+        "eta": "value",
+        "seed": value,
+        "iterations": value,
+        "top_n": value
+    }
+}
+<STOP_HYPERPARAMETERS>
+
+if you got two algorithms in this case CorrelatedTopicModel and DynamicTopicModeling, answere in this format:
+
+<START_HYPERPARAMETERS>
+{
+    "CorrelatedTopicModel": {
+        "num_topics": value,
+        "alpha": "value",
+        "eta": "value",
+        "seed": value,
+        "iterations": value,
+        "top_n": value
+    },
+    "DynamicTopicModeling": {
+        "k": value,
+        "t": value,
+        "alpha_var": value,
+        "eta_var": value,
+        "phi_var": value,
+        "lr_a": value,
+        "lr_b": value,
+        "lr_c": value,
+        "iter": value,
+        "seed": value,
+        "min_cf": value,
+        "min_df": value,
+        "rm_top": value
+    }
+}
+<STOP_HYPERPARAMETERS>
+
+"""
+
 hyperparamter_selection_prompts = {
     "CorrelatedTopicModel": """
 You are an expert in configuring machine learning models. Your task is to suggest optimal hyperparameters for the CorrelatedTopicModel (CTM) algorithm based on the provided research question, its classification, and the dataset analysis.
@@ -20,13 +72,13 @@ Each hyperparameter influences the model as follows:
 
 Please analyze the research question, its classification, and the dataset characteristics to suggest appropriate values for these hyperparameters.
 
-Your response should output only the JSON content between <START_HYPERPARAMETERS> and <STOP_HYPERPARAMETERS>, without any code blocks or additional formatting. Do not include any explanations or descriptions. Here is the exact format you should use:
+Example output formatting for single algorithm prediction: 
 
 Replace "value" with your suggested values for each hyperparameter.
 
 <START_HYPERPARAMETERS>
 {
-    "hyper_parameters": {
+    "CorrelatedTopicModel": {
         "num_topics": value,
         "alpha": "value",
         "eta": "value",
@@ -73,13 +125,13 @@ Each hyperparameter influences the model as follows:
 
 Please analyze the research question, its classification, and the dataset characteristics to suggest appropriate values for these hyperparameters.
 
-Your response should output only the JSON content between <START_HYPERPARAMETERS> and <STOP_HYPERPARAMETERS>, without any code blocks or additional formatting. Do not include any explanations or descriptions. Here is the exact format you should use:
+Example output formatting for single algorithm prediction: 
 
-Replace `"value"` with your suggested values for each hyperparameter.
+Replace "value" with your suggested values for each hyperparameter.
 
 <START_HYPERPARAMETERS>
 {
-    "hyper_parameters": {
+    "DynamicTopicModeling": {
         "k": value,
         "t": value,
         "alpha_var": value,
@@ -112,13 +164,13 @@ Each hyperparameter influences the model as follows:
 
 Please analyze the research question, its classification, and the dataset characteristics to suggest appropriate values for these hyperparameters.
 
-Your response should output only the JSON content between <START_HYPERPARAMETERS> and <STOP_HYPERPARAMETERS>, without any code blocks or additional formatting. Do not include any explanations or descriptions. Here is the exact format you should use:
+Example output formatting for single algorithm prediction: 
 
 Replace "value" with your suggested values for each hyperparameter.
 
 <START_HYPERPARAMETERS>
 {
-    "hyper_parameters": {
+    "HierarchicalDirichletProcess": {
         "random_state": value,
         "top_n": value
     }
@@ -153,13 +205,13 @@ Each hyperparameter influences the model as follows:
 
 Please analyze the research question, its classification, and the dataset characteristics to suggest appropriate values for these hyperparameters.
 
-Your response should output only the JSON content between <START_HYPERPARAMETERS> and <STOP_HYPERPARAMETERS>, without any code blocks or additional formatting. Do not include any explanations or descriptions. Here is the exact format you should use:
+Example output formatting for single algorithm prediction: 
 
-Replace `"value"` with your suggested values for each hyperparameter.
+Replace "value" with your suggested values for each hyperparameter.
 
 <START_HYPERPARAMETERS>
 {
-    "hyper_parameters": {
+    "LatentDirichletAllocation": {
         "k": value,
         "alpha": value,
         "eta": value,
@@ -191,13 +243,13 @@ Each hyperparameter influences the model as follows:
 
 Please analyze the research question, its classification, and the dataset characteristics to suggest appropriate values for these hyperparameters.
 
-Your response should output only the JSON content between <START_HYPERPARAMETERS> and <STOP_HYPERPARAMETERS>, without any code blocks or additional formatting. Do not include any explanations or descriptions. Here is the exact format you should use:
+Example output formatting for single algorithm prediction: 
 
 Replace "value" with your suggested values for each hyperparameter.
 
 <START_HYPERPARAMETERS>
 {
-    "hyper_parameters": {
+    "LatentSemanticIndexing": {
         "num_topics": value,
         "num_words": value,
         "random_state": value,
@@ -218,13 +270,13 @@ Each hyperparameter influences the model as follows:
 
 Please analyze the research question, its classification, and the dataset characteristics to suggest appropriate values for these hyperparameters.
 
-Your response should output only the JSON content between <START_HYPERPARAMETERS> and <STOP_HYPERPARAMETERS>, without any code blocks or additional formatting. Do not include any explanations or descriptions. Here is the exact format you should use:
+Example output formatting for single algorithm prediction: 
 
-Replace the categories and words with your suggested values.
+Replace "value" with your suggested values for each hyperparameter.
 
 <START_HYPERPARAMETERS>
 {
-    "hyper_parameters": {
+    "LIWC": {
         "dictionary": {
             "category1": ["word1", "word2", "..."],
             "category2": ["word1", "word2", "..."],
@@ -253,13 +305,13 @@ Each hyperparameter influences the model as follows:
 
 Please analyze the research question, its classification, and the dataset characteristics to suggest appropriate values for these hyperparameters.
 
-Your response should output only the JSON content between <START_HYPERPARAMETERS> and <STOP_HYPERPARAMETERS>, without any code blocks or additional formatting. Do not include any explanations or descriptions. Here is the exact format you should use:
+Example output formatting for single algorithm prediction: 
 
 Replace "value" with your suggested values for each hyperparameter.
 
 <START_HYPERPARAMETERS>
 {
-    "hyper_parameters": {
+    "NonNegativeMatrixFactorization": {
         "num_topics": value,
         "random_state": value,
         "max_iter": value,
@@ -286,13 +338,13 @@ Each hyperparameter influences the model as follows:
 
 Please analyze the research question, its classification, and the dataset characteristics to suggest appropriate values for these hyperparameters.
 
-Your response should output only the JSON content between <START_HYPERPARAMETERS> and <STOP_HYPERPARAMETERS>, without any code blocks or additional formatting. Do not include any explanations or descriptions. Here is the exact format you should use:
+Example output formatting for single algorithm prediction: 
 
 Replace "value" with your suggested values for each hyperparameter.
 
 <START_HYPERPARAMETERS>
 {
-    "hyper_parameters": {
+    "ProbabilisticLatentSemanticAnalysis": {
         "num_topics": value,
         "passes": value,
         "random_state": value,

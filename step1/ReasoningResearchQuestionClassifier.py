@@ -1,13 +1,22 @@
 from langchain_community.chat_models import ChatOpenAI
 from agents.ReasoningBaseClassifier import ReasoningBaseClassifier
-from typing import Tuple
+from typing import Tuple, List
+import openai
 
 
 class ReasoningResearchQuestionClassifier(ReasoningBaseClassifier):
-    def __init__(self,
-                 llm: ChatOpenAI,
-                 start_answer_token: str = "<START_ANSWER>",
-                 stop_answer_token: str = "<STOP_ANSWER>"):
+    def __init__(
+        self,
+        llm: ChatOpenAI,
+        start_answer_token: str = "<START_ANSWER>",
+        stop_answer_token: str = "<STOP_ANSWER>",
+        valid_classes: List[str] = [
+            "Explicating",
+            "Envisioning",
+            "Relating",
+            "Debating",
+        ],
+    ):
         """
         Initializes the ReasoningResearchQuestionClassifier with specific valid classes,
         a prompt explanation, and tokens to encapsulate the final classification result.
@@ -18,7 +27,6 @@ class ReasoningResearchQuestionClassifier(ReasoningBaseClassifier):
             stop_answer_token (str): Token indicating the end of the final answer.
         """
         # Define the valid classes for classification
-        valid_classes = ['Explicating', 'Envisioning', 'Relating', 'Debating']
 
         # Provide a detailed explanation to guide the LLM in classification
         prompt_explanation = """
@@ -52,10 +60,10 @@ class ReasoningResearchQuestionClassifier(ReasoningBaseClassifier):
             prompt_explanation=prompt_explanation,
             llm=llm,
             start_answer_token=start_answer_token,
-            stop_answer_token=stop_answer_token
+            stop_answer_token=stop_answer_token,
         )
 
-    def __call__(self, text: str) -> Tuple[str, str]:
+    def __call__(self, text: str, critique:str = "") -> openai.Stream:
         """
         Classifies a given research question into one of the predefined classes and provides reasoning.
 
@@ -66,5 +74,5 @@ class ReasoningResearchQuestionClassifier(ReasoningBaseClassifier):
             Tuple[str, str]: A tuple containing the classification result and the reasoning steps.
         """
         # Run the classification chain with the provided text
-        classification, reasoning = self.classify(text=text)
-        return classification, reasoning
+        response = self.classify(text=text, critique=critique)
+        return response
