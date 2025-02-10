@@ -909,35 +909,36 @@ class Step_4:
 
         self.results = {}
 
-        for algorithm_name, algorithm in self.calibrated_algorithms.items():
+        ##### Changes for bamm  uncomment for normal usage
+        # for algorithm_name, algorithm in self.calibrated_algorithms.items():
 
-            if algorithm_name not in [
-                "LatentDirichletAllocation",
-                "DynamicTopicModeling",
-            ]:
-                continue
+        #     if algorithm_name not in [
+        #         "LatentDirichletAllocation",
+        #         "DynamicTopicModeling",
+        #     ]:
+        #         continue
 
-            try:
-                self.results[algorithm_name] = algorithm(self.dataset)
-                print(f"Algorithm '{algorithm_name}' executed successfully.")
-            except Exception as e:
-                self.results[algorithm_name] = str(e)
-                print(f"Error running algorithm '{algorithm_name}': {e}")
+        #     try:
+        #         self.results[algorithm_name] = algorithm(self.dataset)
+        #         print(f"Algorithm '{algorithm_name}' executed successfully.")
+        #     except Exception as e:
+        #         self.results[algorithm_name] = str(e)
+        #         print(f"Error running algorithm '{algorithm_name}': {e}")
 
         import pickle as pk
+        import time
 
-        with open(os.path.join("temp", "results.pk"), "wb") as f:
-            pk.dump(self.results, f)
+        time.sleep(3)
+
+        with open(os.path.join("temp", "resultsdataset6bamm.pk"), "rb") as f:
+            self.results = pk.load(f)
+
+        ##### Ende Bamm Änderungen 1
 
         print("\nCollected Results:", self.results)
         self.current_substep = 2  # Move to the next substep
 
         messages = []
-
-        print(
-            "RSULTS DYNAMIC TOPIC MODELING",
-            self.results["DynamicTopicModeling"],
-        )
 
         for algorithm, results in self.results.items():
             if type(results) == str:
@@ -1440,16 +1441,13 @@ async def stream_current_message():
         async for token in api.stream_current_message():
             # SSE format
             yield token
-            # "Nudge" flush 
+            # "Nudge" flush
             await asyncio.sleep(0)
 
     return StreamingResponse(
         sse_generator(),
         media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no"
-        }
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
 
