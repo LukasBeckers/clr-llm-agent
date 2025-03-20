@@ -368,16 +368,16 @@ class Step_2:
 
         # Downloading the datasets from the datasources
         data_loader = DataLoader(email=email)
-        # data_set = data_loader(search_strings=search_strings[:])
-        # data_set = data_loader(search_strings=[("Glymph* OR Brain_Clearance", "pub_med")])
+        data_set = data_loader(search_strings=search_strings[:])
+        data_set = data_loader(search_strings=[("Glymph* OR Brain_Clearance", "pub_med")])
 
         # with open(os.path.join("temp", "dataset"), "wb") as f:
         #     pk.dump(data_set, f)
 
-        with open(os.path.join("temp", "dataset"), "rb") as f:
-            dataset = pk.load(f)
+        #with open(os.path.join("temp", "dataset"), "rb") as f:
+        #    dataset = pk.load(f)
 
-        self.dataset = dataset
+        self.dataset = data_set
 
         return [message]
 
