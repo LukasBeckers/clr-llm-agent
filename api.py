@@ -37,6 +37,7 @@ from uuid import uuid4
 import uuid
 from typing import List, Callable, Tuple
 from pydantic import BaseModel
+import asyncio
 from matplotlib import pyplot as plt
 
 
@@ -367,16 +368,16 @@ class Step_2:
 
         # Downloading the datasets from the datasources
         data_loader = DataLoader(email=email)
-        # data_set = data_loader(search_strings=search_strings[:])
-        # data_set = data_loader(search_strings=[("Glymph* OR Brain_Clearance", "pub_med")])
+        data_set = data_loader(search_strings=search_strings[:])
+        data_set = data_loader(search_strings=[("Glymph* OR Brain_Clearance", "pub_med")])
 
         # with open(os.path.join("temp", "dataset"), "wb") as f:
         #     pk.dump(data_set, f)
 
-        with open(os.path.join("temp", "dataset"), "rb") as f:
-            dataset = pk.load(f)
+        #with open(os.path.join("temp", "dataset"), "rb") as f:
+        #    dataset = pk.load(f)
 
-        self.dataset = dataset
+        self.dataset = data_set
 
         return [message]
 
@@ -908,35 +909,36 @@ class Step_4:
 
         self.results = {}
 
-        for algorithm_name, algorithm in self.calibrated_algorithms.items():
+        ##### Changes for bamm  uncomment for normal usage
+        # for algorithm_name, algorithm in self.calibrated_algorithms.items():
 
-            if algorithm_name not in [
-                "LatentDirichletAllocation",
-                "DynamicTopicModeling",
-            ]:
-                continue
+        #     if algorithm_name not in [
+        #         "LatentDirichletAllocation",
+        #         "DynamicTopicModeling",
+        #     ]:
+        #         continue
 
-            try:
-                self.results[algorithm_name] = algorithm(self.dataset)
-                print(f"Algorithm '{algorithm_name}' executed successfully.")
-            except Exception as e:
-                self.results[algorithm_name] = str(e)
-                print(f"Error running algorithm '{algorithm_name}': {e}")
+        #     try:
+        #         self.results[algorithm_name] = algorithm(self.dataset)
+        #         print(f"Algorithm '{algorithm_name}' executed successfully.")
+        #     except Exception as e:
+        #         self.results[algorithm_name] = str(e)
+        #         print(f"Error running algorithm '{algorithm_name}': {e}")
 
         import pickle as pk
+        import time
 
-        with open(os.path.join("temp", "results.pk"), "wb") as f:
-            pk.dump(self.results, f)
+        time.sleep(3)
+
+        with open(os.path.join("temp", "resultsdataset6bamm.pk"), "rb") as f:
+            self.results = pk.load(f)
+
+        ##### Ende Bamm Änderungen 1
 
         print("\nCollected Results:", self.results)
         self.current_substep = 2  # Move to the next substep
 
         messages = []
-
-        print(
-            "RSULTS DYNAMIC TOPIC MODELING",
-            self.results["DynamicTopicModeling"],
-        )
 
         for algorithm, results in self.results.items():
             if type(results) == str:
@@ -1366,13 +1368,14 @@ class API:
                     continue
 
                 all_tokens.append(token)
-                print(token, end="")
+                # print(token, end="")
                 full_message += token
                 if self.current_message.type == "reasoning":
                     # the full resoponse from open ai contains the whole message
                     # here we only yield the reasoning tokens
                     token_type = response_parser(token=token)
                     if token_type == "reasoning":
+                        print("Yielding Token: ", token)
                         yield token
 
                 # Result Messages are already filtered so we yield all tokens.
@@ -1433,8 +1436,18 @@ async def current_message():
 
 @app.get("/stream_current_message")
 async def stream_current_message():
+    # Suppose api.stream_current_message() is an async generator that yields tokens
+    async def sse_generator():
+        async for token in api.stream_current_message():
+            # SSE format
+            yield token
+            # "Nudge" flush
+            await asyncio.sleep(0)
+
     return StreamingResponse(
-        api.stream_current_message(), media_type="text/plain"
+        sse_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
 

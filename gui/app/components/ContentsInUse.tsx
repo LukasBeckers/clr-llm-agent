@@ -147,11 +147,11 @@ const ContentsInUse: React.FC<ContentsInUseProps> = ({
     try {
       const response = await fetch(
         "http://127.0.0.1:8000/stream_current_message"
+
       );
       if (!response.ok) {
         throw new Error(`Error streaming: ${response.statusText}`);
       }
-
       const reader = response.body?.getReader();
       if (!reader) {
         throw new Error("No readable stream.");
@@ -164,7 +164,8 @@ const ContentsInUse: React.FC<ContentsInUseProps> = ({
         const { value, done: readerDone } = await reader.read();
         done = readerDone;
         if (value) {
-          const chunk = decoder.decode(value);
+          const chunk = decoder.decode(value, {stream: true});
+          console.log("CHUNK!::", chunk)
           appendToLastMessage(chunk, step);
         }
       }
@@ -182,6 +183,7 @@ const ContentsInUse: React.FC<ContentsInUseProps> = ({
   };
 
   const appendToLastMessage = (chunk: string, step?: number) => {
+    console.log("Chunk in appendToLastMessage", chunk)
     updateLastMessage(chunk, step);
   };
 
